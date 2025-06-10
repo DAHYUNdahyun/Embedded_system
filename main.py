@@ -73,8 +73,9 @@ egg_center_y = egg_y + egg_h // 2
 # 캐릭터 이미지
 scale = 1.5
 tama_width, tama_height = int(100 * scale), int(100 * scale)
-tama_img_normal = pygame.transform.scale(pygame.image.load("assets/tama_joy.png").convert_alpha(), (tama_width, tama_height))
-tama_img_eat = pygame.transform.scale(pygame.image.load("assets/tama_eat.png").convert_alpha(), (tama_width, tama_height))
+tama_img_normal = pygame.transform.scale(pygame.image.load("assets/tama4_joy.png").convert_alpha(), (tama_width, tama_height))
+tama_img_eat = pygame.transform.scale(pygame.image.load("assets/tama4_eat.png").convert_alpha(), (tama_width, tama_height))
+tama_img_rest = pygame.transform.scale(pygame.image.load("assets/tama4_rest.png").convert_alpha(), (tama_width, tama_height))
 tama_img = tama_img_normal
 tama_x = egg_center_x - tama_width // 2
 tama_y = egg_center_y - tama_height // 2
@@ -210,7 +211,14 @@ while running:
     screen.fill(WHITE)
     keys = pygame.key.get_pressed()
     screen_rect = draw_shell_ui(keys, status)
-    
+
+    if rest_mode:
+        tama_img = tama_img_rest
+    elif eating:
+        tama_img = tama_img_eat
+    else:
+        tama_img = tama_img_normal
+
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
             running = False
