@@ -120,9 +120,18 @@ def draw_shell_ui(keys):
         color = BLACK if keys[key] else GRAY
         pygame.draw.rect(screen, color, (base_x + dx, base_y + dy, 12, 12))
 
+    # 상태바 배경 박스 추가
+    bg_width = 280
+    bg_height = 5 * 45 + 40  # 상태바 5개 + 여백
+    bg_x = egg_x + egg_w + spacing - 20
+    bg_y = egg_y + (egg_h - bg_height) // 2 - 10
+
+    pygame.draw.rect(screen, (245, 245, 245), (bg_x, bg_y, bg_width, bg_height), border_radius=15)
+    pygame.draw.rect(screen, GRAY, (bg_x, bg_y, bg_width, bg_height), 2, border_radius=15)  # 테두리
+
     # 상태바
-    sx = egg_x + egg_w + spacing
-    sy = egg_y + 60
+    sx = bg_x + 20
+    sy = bg_y + 20
     for i, (label, key, color) in enumerate([
         ("기분", "mood", PINK),
         ("피로도", "fatigue", BLUE),
