@@ -35,10 +35,21 @@ font = pygame.font.Font("assets/fonts/DungGeunMo.ttf", 24)
 # 이미지 로드
 scale = 1.5
 tama_width, tama_height = int(100 * scale), int(100 * scale)
-tama_img_normal = pygame.transform.scale(pygame.image.load("assets/tama4_joy.png").convert_alpha(), (tama_width, tama_height))
-tama_img_eat = pygame.transform.scale(pygame.image.load("assets/tama4_eat.png").convert_alpha(), (tama_width, tama_height))
-tama_img_rest = pygame.transform.scale(pygame.image.load("assets/tama4_rest.png").convert_alpha(), (tama_width, tama_height))
-tama_img = tama_img_normal
+# 이미지 경로에 진화 단계와 감정 타입이 포함되어야 함
+emotion_types = ["joy", "eat", "rest", "sad", "zz"]
+
+# 이미지 딕셔너리: evolution_stage → emotion_type → image
+tama_images = {
+    stage: {
+        emotion: pygame.transform.scale(
+            pygame.image.load(f"assets/tama{stage}_{emotion}.png").convert_alpha(),
+            (tama_width, tama_height)
+        )
+        for emotion in emotion_types
+    }
+    for stage in range(1, 5)  # 1단계~4단계
+}
+
 
 # 레이아웃
 egg_w, egg_h = 500, 580
@@ -135,19 +146,23 @@ def update_all_status():
     update_health(status)
     update_evolution(status)
 
+# 진화
+def get_evolution_stage(evolution_value):
+    if evolution_value < 25:
+        return 1
+    elif evolution_value < 50:
+        return 2
+    elif evolution_value < 75:
+        return 3
+    else:
+        return 4
+
 # 메인 루프
 running = True
 while running:
     screen.fill(WHITE)
     keys = pygame.key.get_pressed()
     screen_rect = draw_shell_ui(keys)
-
-    if rest_mode:
-        tama_img = tama_img_rest
-    elif eating:
-        tama_img = tama_img_eat
-    else:
-        tama_img = tama_img_normal
 
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
@@ -192,6 +207,19 @@ while running:
 
     if food:
         pygame.draw.circle(screen, RED, food, food_radius)
+
+    # 진화 단계 계산
+    evolution_stage = get_evolution_stage(status["evolution"])
+
+    # 감정 상태에 따라 이미지 선택
+    if rest_mode:
+        tama_img = tama_images[evolution_stage]["rest"]
+    elif eating:
+        tama_img = tama_images[evolution_stage]["eat"]
+    elif status["mood"] < 50:
+        tama_img = tama_images[evolution_stage]["sad"]
+    else:
+        tama_img = tama_images[evolution_stage]["joy"]
 
     screen.blit(tama_img, (tama_x, tama_y))
 
