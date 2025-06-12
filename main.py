@@ -139,7 +139,7 @@ def draw_shell_ui(keys):
     sy = bg_y + 20
     for i, (label, key, color) in enumerate([
         ("기분", "mood", PINK),
-        ("피로도", "fatigue", BLUE),
+        ("체력", "fatigue", BLUE),
         ("배고픔", "hunger", YELLOW),
         ("생명력", "health", RED),
         ("진화", "evolution", GREEN),
