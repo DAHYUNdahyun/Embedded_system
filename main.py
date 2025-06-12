@@ -8,11 +8,11 @@ from status.fatigue import check_sleep_restore
 from status.health import update_health
 from status.evolution import update_evolution
 from status.actions import rest
-from game_select import draw_game_select_menu
-from shooting_game import draw_shooting_game
-from running_game import draw_running_game
-from dodging_game import draw_dodging_game
-from draw_heart import load_heart_images
+from game.game_select import draw_game_select_menu
+from game.shooting_game import draw_shooting_game
+from game.running_game import draw_running_game
+from game.dodging_game import draw_dodging_game
+from game.draw_heart import load_heart_images
 
 # 초기화
 pygame.init()

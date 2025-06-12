@@ -1,6 +1,6 @@
 import pygame
 import random
-from draw_heart import draw_lives_hearts
+from game.draw_heart import draw_lives_hearts
 
 def draw_shooting_game(screen, screen_rect, tama_img_game, player_x, player_y,
     bullet_speed, enemy_speed,

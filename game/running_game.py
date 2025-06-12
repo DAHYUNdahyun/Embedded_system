@@ -1,6 +1,6 @@
 import pygame
 import random
-from draw_heart import draw_lives_hearts
+from game.draw_heart import draw_lives_hearts
 
 def draw_running_game(screen, screen_rect, ground_y, gravity, tama_img_game, obstacle_interval, font, colors,
     runner_y, is_jumping, jump_velocity, jump_count,
