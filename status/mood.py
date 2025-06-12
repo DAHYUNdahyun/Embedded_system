@@ -4,7 +4,6 @@ from .constants import MOOD_CHECK_INTERVAL
 def update_mood(status, temperature, humidity):
     now = time.time()
     
-    # last_mood_check가 없으면 초기화
     if "last_mood_check" not in status:
         status["last_mood_check"] = now
 

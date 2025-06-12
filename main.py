@@ -81,15 +81,18 @@ rest_text_timer = 0
 # 버튼 좌표
 left_buttons = []
 
+# 상태바
 def draw_status_bar(label, value, x, y, color):
     pygame.draw.rect(screen, GRAY, (x, y, 200, 16))
     pygame.draw.rect(screen, color, (x, y, 200 * value // 100, 16))
     screen.blit(font.render(f"{label}: {int(value)}", True, BLACK), (x, y - 22))
 
+# UI
 def draw_shell_ui(keys):
     global left_buttons
     pygame.draw.ellipse(screen, BG_PINK, (egg_x, egg_y, egg_w, egg_h))
 
+    # 화면 안 디스플레이 박스
     screen_w, screen_h = 320, 350
     screen_x = egg_center_x - screen_w // 2
     screen_y = egg_y + 110
@@ -145,6 +148,7 @@ def draw_shell_ui(keys):
 
     return screen_rect
 
+# 음식 생성성
 def spawn_food(screen_rect):
     margin = 50
     return (random.randint(screen_rect.left + margin, screen_rect.right - margin),
@@ -192,6 +196,7 @@ while running:
             if not food and not rest_mode:
                 food = spawn_food(screen_rect)
 
+    # 이동
     if not rest_mode:
         if keys[pygame.K_LEFT]: tama_x -= tama_speed
         if keys[pygame.K_RIGHT]: tama_x += tama_speed
@@ -217,6 +222,7 @@ while running:
     if eating and pygame.time.get_ticks() - eat_timer > 300:
         eating = False
 
+    # 먹이 그리기
     if food:
         pygame.draw.circle(screen, RED, food, food_radius)
 
@@ -235,6 +241,7 @@ while running:
 
     screen.blit(tama_img, (tama_x, tama_y))
 
+    # 휴식
     if rest_mode:
         rest(status)
         if pygame.time.get_ticks() - rest_text_timer > 500:
