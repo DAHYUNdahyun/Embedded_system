@@ -2,7 +2,7 @@ import time
 
 def init_status():
     return {
-        "mood": 0,
+        "mood": 80,
         "fatigue": 80,
         "hunger": 80,
         "health": 100,
