@@ -1,6 +1,11 @@
 import pygame
 import sys
 import random
+from game_select import draw_game_select_menu
+from shooting_game import draw_shooting_game
+from running_game import draw_running_game
+from dodging_game import draw_dodging_game
+from draw_heart import load_heart_images
 
 # 초기화
 pygame.init()
@@ -9,6 +14,8 @@ pygame.init()
 WIDTH, HEIGHT = 700, 600
 screen = pygame.display.set_mode((WIDTH, HEIGHT))
 pygame.display.set_caption("Tamagotchi Style UI")
+
+load_heart_images()
 
 # 전체 흐름(화면 전환)을 관리할 상태 변수
 state = "main"  # 또는 "game_select", "shooting", "running", "dodging"
@@ -75,12 +82,6 @@ shooting_game_over = False
 # 슈팅게임 전용 다마고치 위치
 player_x = egg_center_x
 player_y = egg_y + 400  # 알 내부 바닥 근처
-
-# 하트 이미지 불러오기
-heart_img = pygame.image.load("assets/real_heart.png").convert_alpha()
-empty_heart_img = pygame.image.load("assets/real_empty_heart.png").convert_alpha()
-heart_img = pygame.transform.scale(heart_img, (30, 30))
-empty_heart_img = pygame.transform.scale(empty_heart_img, (30, 30))
 
 # 러닝게임 전용 다마고치 위치
 runner_x = egg_center_x - 50
@@ -178,218 +179,6 @@ def draw_tamagotchi(x, y):
 def draw_food(x, y):
     pygame.draw.circle(screen, RED, (x, y), food_radius)
 
-#게임 선택 화면
-def draw_game_select_menu(screen_rect):
-    title = font.render("Game Select", True, BLACK)
-    screen.blit(title, (WIDTH // 2 - title.get_width() // 2, 125))
-
-    options = ["1. Shooting game", "2. Running game", "3. Dodge game"]
-    rects = []
-
-    for i, option in enumerate(options):
-        box = pygame.Rect(screen_rect.left + 30, screen_rect.top + 60 + i * 100, screen_rect.width - 60, 60)
-        pygame.draw.rect(screen, GRAY, box, border_radius=10)
-        label = font.render(option, True, BLACK)
-        screen.blit(label, (box.centerx - label.get_width() // 2, box.centery - label.get_height() // 2))
-        rects.append(box)
-
-    return rects
-
-def draw_lives_hearts(x, y, lives, max_lives=3):
-    for i in range(max_lives):
-        if i < lives:
-            screen.blit(heart_img, (x + i * 35, y))
-        else:
-            screen.blit(empty_heart_img, (x + i * 35, y))
-
-def draw_shooting_game(screen_rect):
-    global bullets, enemies, enemy_spawn_timer, score, lives, shooting_game_over
-
-    # 플레이어 그리기
-    screen.blit(tama_img_game, (player_x - 30, player_y - 30))
-
-    if not shooting_game_over:
-        # 총알 이동 및 그리기
-        for bullet in bullets[:]:
-            bullet[1] -= bullet_speed
-            pygame.draw.circle(screen, RED, bullet, 5)
-            if bullet[1] < screen_rect.top:
-                bullets.remove(bullet)
-
-        # 적 생성 (일정 시간마다)
-        enemy_spawn_timer += 1
-        if enemy_spawn_timer >= 60:
-            x = random.randint(screen_rect.left + 20, screen_rect.right - 20)
-            enemies.append([x, screen_rect.top])
-            enemy_spawn_timer = 0
-
-        # 적 이동 및 그리기
-        for enemy in enemies[:]:
-            enemy[1] += enemy_speed
-            pygame.draw.rect(screen, BLACK, (enemy[0], enemy[1], 20, 20))
-            
-            # 적이 바닥에 닿으면 생명 감소
-            if enemy[1] > screen_rect.bottom:
-                enemies.remove(enemy)
-                lives -= 1
-                if lives <= 0:
-                    shooting_game_over = True
-            
-            # 적이 플레이어와 충돌하면 생명 감소
-            dist = ((player_x - enemy[0]) ** 2 + (player_y - enemy[1]) ** 2) ** 0.5
-            if dist < 30:
-                enemies.remove(enemy)
-                lives -= 1
-                if lives <= 0:
-                    shooting_game_over = True
-
-        # 충돌 검사
-        for bullet in bullets[:]:
-            bullet_rect = pygame.Rect(bullet[0] - 3, bullet[1] - 3, 6, 6)  # 총알은 지름 6짜리 원으로 가정
-            for enemy in enemies[:]:
-                enemy_rect = pygame.Rect(enemy[0], enemy[1], 20, 20)  # 적은 20x20 정사각형
-                
-                if bullet_rect.colliderect(enemy_rect):  # 충돌 감지!
-                    bullets.remove(bullet)
-                    enemies.remove(enemy)
-                    score += 1
-                    break  # 하나의 총알이 여러 적 제거 못 하게 break
-    
-    # 점수 표시
-    score_text = font.render(f"score : {score}", True, BLACK)
-    screen.blit(score_text, (screen_rect.left + 13, screen_rect.top + 10))
-    
-    # 생명 표시
-    draw_lives_hearts(screen_rect.left + 10, screen_rect.top + 40, lives)
-
-    # 게임 오버 메시지
-    if shooting_game_over:
-        over_text1 = font.render("Game Over!", True, RED)
-        screen.blit(over_text1, (screen_rect.centerx - over_text1.get_width() // 2, screen_rect.centery - 30))
-        over_text2 = font.render("Press R to Restart", True, RED)
-        screen.blit(over_text2, (screen_rect.centerx - over_text2.get_width() // 2, screen_rect.centery - 5))
-
-def draw_running_game(screen_rect, ground_y):
-    global runner_y, is_jumping, jump_velocity, jump_count
-    global obstacles, stars, obstacle_timer, running_score, running_lives, running_game_over
-
-    # 캐릭터 위치 (고정 x)
-    runner_x = screen_rect.left + 50
-
-    # 캐릭터 점프 물리 처리
-    if is_jumping:
-        runner_y += jump_velocity
-        jump_velocity += gravity
-        
-        # 최대 높이 제한
-        if runner_y < screen_rect.top:
-            runner_y = screen_rect.top
-            jump_velocity = 0  # 더 못 올라감
-
-        if runner_y >= ground_y:
-            runner_y = ground_y
-            is_jumping = False
-            jump_velocity = 0
-            jump_count = 0
-
-    # 캐릭터 그리기
-    screen.blit(tama_img_game, (runner_x, runner_y))
-
-    if not running_game_over:
-        # 장애물 생성
-        obstacle_timer += 1
-        if obstacle_timer >= obstacle_interval:
-            # 허들 (바닥 높이)
-            obstacles.append({"pos": [screen_rect.right, ground_y + 20], "speed": random.randint(4, 6)})
-            # 별 (위쪽 높이)
-            star_y = ground_y - random.choice([80, 140])
-            stars.append({"pos": [screen_rect.right, star_y - 80], "speed": random.randint(3, 6)})
-            obstacle_timer = 0
-
-        # 장애물/별 이동 및 충돌
-        for obs in obstacles[:]:
-            obs["pos"][0] -= obs["speed"]
-            pygame.draw.rect(screen, BLACK, (*obs["pos"], 40, 30))  # 허들
-            # 충돌 검사
-            if runner_y + 50 > obs["pos"][1] and screen_rect.left + 50 < obs["pos"][0] < screen_rect.left + 90:
-                obstacles.remove(obs)
-                running_lives -= 1
-                if running_lives <= 0:
-                    running_game_over = True
-
-            elif obs["pos"][0] < screen_rect.left:
-                obstacles.remove(obs)
-
-        for star in stars[:]:
-            star["pos"][0] -= star["speed"]
-            pygame.draw.circle(screen, YELLOW, (star["pos"][0]+15, star["pos"][1]+15), 15)
-            # 충돌 검사
-            if runner_y < star["pos"][1] + 30 and screen_rect.left + 50 < star["pos"][0] < screen_rect.left + 90:
-                stars.remove(star)
-                running_score += 1
-            elif star["pos"][0] < screen_rect.left:
-                stars.remove(star)
-
-    # 점수 & 생명
-    score_text = font.render(f"score : {running_score}", True, BLACK)
-    screen.blit(score_text, (screen_rect.left + 10, screen_rect.top + 10))
-    draw_lives_hearts(screen_rect.left + 10, screen_rect.top + 40, running_lives)
-
-    if running_game_over:
-        over1 = font.render("Game Over!", True, RED)
-        screen.blit(over1, (screen_rect.centerx - over1.get_width() // 2, screen_rect.centery - 30))
-        over2 = font.render("Press R to Restart", True, RED)
-        screen.blit(over2, (screen_rect.centerx - over2.get_width() // 2, screen_rect.centery - 5))
-
-def draw_dodging_game(screen_rect):
-    global dodger_x, dodger_y, falling_objects, falling_timer
-    global dodger_score, dodger_lives, dodging_game_over
-
-    # 플레이어 위치 초기화 (처음 진입 시)
-    if dodger_x == 0:
-        dodger_x = screen_rect.centerx - 30
-        dodger_y = screen_rect.bottom - 70
-
-    # 플레이어 그리기
-    screen.blit(tama_img_game, (dodger_x, dodger_y))
-
-    if not dodging_game_over:
-        # 떨어지는 물체 생성
-        falling_timer += 1
-        if falling_timer >= falling_interval:
-            x = random.randint(screen_rect.left + 10, screen_rect.right - 40)
-            falling_objects.append([x, screen_rect.top])
-            falling_timer = 0
-
-        # 물체 이동 및 충돌
-        for obj in falling_objects[:]:
-            obj[1] += 5
-            pygame.draw.circle(screen, PINK, (obj[0] + 15, obj[1] + 15), 15)
-
-            # 충돌
-            dist = ((dodger_x + 30 - (obj[0] + 15)) ** 2 + (dodger_y + 30 - (obj[1] + 15)) ** 2) ** 0.5
-            if dist < 40:
-                falling_objects.remove(obj)
-                dodger_lives -= 1
-                if dodger_lives <= 0:
-                    dodging_game_over = True
-
-            elif obj[1] > screen_rect.bottom:
-                falling_objects.remove(obj)
-                dodger_score += 1
-
-    # 점수 & 생명
-    score_text = font.render(f"score : {dodger_score}", True, BLACK)
-    screen.blit(score_text, (screen_rect.left + 10, screen_rect.top + 10))
-    draw_lives_hearts(screen_rect.left + 10, screen_rect.top + 40, dodger_lives)
-
-    if dodging_game_over:
-        over1 = font.render("Game Over!", True, RED)
-        screen.blit(over1, (screen_rect.centerx - over1.get_width() // 2, screen_rect.centery - 30))
-        over2 = font.render("Press R to Restart", True, RED)
-        screen.blit(over2, (screen_rect.centerx - over2.get_width() // 2, screen_rect.centery - 5))
-
-
 # 메인 루프
 running = True
 while running:
@@ -402,17 +191,43 @@ while running:
         draw_tamagotchi(tama_x, tama_y)
     elif state == "game_select":
         screen_rect, button_game_rect, button_main_rect  = draw_shell_ui(keys)
-        menu_rects = draw_game_select_menu(screen_rect)
+        menu_rects = draw_game_select_menu(screen, screen_rect, font, (BLACK, GRAY))
     elif state == "shooting":
         screen_rect, button_game_rect, button_main_rect  = draw_shell_ui(keys)
-        draw_shooting_game(screen_rect)
+        (
+            bullets, enemies, enemy_spawn_timer,
+            score, lives, shooting_game_over
+        ) = draw_shooting_game(
+            screen, screen_rect, tama_img_game, player_x, player_y,
+            bullet_speed, enemy_speed,
+            bullets, enemies, enemy_spawn_timer, score, lives, shooting_game_over,
+            font, (RED, BLACK)
+        )
     elif state == "running":
         screen_rect, button_game_rect, button_main_rect  = draw_shell_ui(keys)
         ground_y = screen_rect.bottom - 70
-        draw_running_game(screen_rect, ground_y)
+        (
+            runner_y, is_jumping, jump_velocity, jump_count,
+            obstacles, stars, obstacle_timer,
+            running_score, running_lives, running_game_over
+        ) = draw_running_game(
+            screen, screen_rect, ground_y, gravity, tama_img_game, obstacle_interval, font, (BLACK, YELLOW, RED),
+            runner_y, is_jumping, jump_velocity, jump_count,
+            obstacles, stars, obstacle_timer,
+            running_score, running_lives, running_game_over
+        )    
     elif state == "dodging":
         screen_rect, button_game_rect, button_main_rect  = draw_shell_ui(keys)
-        draw_dodging_game(screen_rect)
+        (
+        dodger_x, dodger_y,
+        falling_objects, falling_timer,
+        dodger_score, dodger_lives, dodging_game_over
+        ) = draw_dodging_game(
+            screen, screen_rect, tama_img_game, falling_interval, font, (PINK, RED, BLACK),
+            dodger_x, dodger_y,
+            falling_objects, falling_timer,
+            dodger_score, dodger_lives, dodging_game_over
+        )
         
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
