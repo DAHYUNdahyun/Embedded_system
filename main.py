@@ -29,9 +29,20 @@ BG_PINK, GREEN = (255,200,220), (0,200,0)
 font = pygame.font.Font("assets/fonts/DungGeunMo.ttf", 24)
 rest_text_list = ["휴 식 중", "휴 식 중 .", "휴 식 중 . .", "휴 식 중 . . ."]
 
-# 다마고치 이미지
-scale = 1.5
-tama_width, tama_height = int(100 * scale), int(100 * scale)
+# 다마고치 이미지 로딩 및 크기 자동 조정
+sample_image = pygame.image.load("assets/tama1_joy.png").convert_alpha()
+original_width, original_height = sample_image.get_size()
+scale_factor = 0.15  # 더 작게 조정함
+
+# 메인 화면용 캐릭터 크기
+tama_width = int(original_width * scale_factor)
+tama_height = int(original_height * scale_factor)
+
+# 게임용 캐릭터 크기 (더 작게)
+game_scale_factor = 0.1
+tama_width_game = int(original_width * game_scale_factor)
+tama_height_game = int(original_height * game_scale_factor)
+
 emotion_types = ["joy", "eat", "rest", "sad", "zz"]
 tama_images = {
     stage: {
@@ -41,6 +52,7 @@ tama_images = {
         ) for emo in emotion_types
     } for stage in range(1, 5)
 }
+
 def get_evolution_stage(evo):
     return 1 if evo < 25 else 2 if evo < 50 else 3 if evo < 75 else 4
 
@@ -63,6 +75,9 @@ egg_center_y = egg_y + egg_h // 2
 tama_x = egg_center_x - tama_width // 2
 tama_y = egg_center_y - tama_height // 2
 
+# 게임 이미지 (게임 화면용 캐릭터)
+tama_img_game = pygame.transform.scale(sample_image, (tama_width_game, tama_height_game))
+
 #시작화면 변수
 clock = pygame.time.Clock()
 font_start = pygame.font.SysFont("Arial", 24, bold=True)
@@ -78,9 +93,6 @@ vk_row, vk_col = 0, 0
 nickname = ""
 # 시작화면 버튼 선택 인덱스 0=start, 1=instruction
 start_select_idx = 0
-
-# 게임 이미지
-tama_img_game = pygame.transform.scale(tama_images[1]["joy"], (60, 60))
 
 # 게임 변수 초기화
 player_x, player_y = egg_center_x, egg_y + 400
@@ -105,7 +117,7 @@ def update_all_status():
 
 # 음식 생성
 def spawn_food(screen_rect):
-    margin = 20
+    margin = 40
     return (
         random.randint(screen_rect.left + margin, screen_rect.right - margin),
         random.randint(screen_rect.top + margin, screen_rect.bottom - margin)
@@ -335,14 +347,9 @@ while running:
     if keys[pygame.K_DOWN]:
         tama_y += tama_speed
     if screen_rect:
-        if tama_x < screen_rect.left:
-            tama_x = screen_rect.left
-        if tama_x + tama_width > screen_rect.right:
-            tama_x = screen_rect.right - tama_width
-        if tama_y < screen_rect.top:
-            tama_y = screen_rect.top
-        if tama_y + tama_height > screen_rect.bottom:
-            tama_y = screen_rect.bottom - tama_height
+        tama_x = max(screen_rect.left, min(tama_x, screen_rect.right - tama_width))
+        tama_y = max(screen_rect.top, min(tama_y, screen_rect.bottom - tama_height))
+
 
     # 휴식 모드 해제 조건
     if not button_pressed[2]:
