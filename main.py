@@ -159,7 +159,10 @@ while running:
     screen.fill(WHITE)
     keys = pygame.key.get_pressed()
     
-    screen_rect = None
+    if state in ["main", "game_select", "shooting", "running", "dodging"]:
+        screen_rect, left_buttons = draw_shell_ui(keys)
+    else:
+        screen_rect, left_buttons = None, []
 
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
