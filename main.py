@@ -29,44 +29,32 @@ BG_PINK, GREEN = (255,200,220), (0,200,0)
 font = pygame.font.Font("assets/fonts/DungGeunMo.ttf", 24)
 rest_text_list = ["휴 식 중", "휴 식 중 .", "휴 식 중 . .", "휴 식 중 . . ."]
 
-# 다마고치 이미지 로딩 및 크기 자동 조정
-sample_image = pygame.image.load("assets/tama1_joy.png").convert_alpha()
-original_width, original_height = sample_image.get_size()
-scale_factor = 0.15  # 더 작게 조정함
-
-# 메인 화면용 캐릭터 크기
-tama_width = int(original_width * scale_factor)
-tama_height = int(original_height * scale_factor)
-
-# 게임용 캐릭터 크기 (더 작게)
-game_scale_factor = 0.1
-tama_width_game = int(original_width * game_scale_factor)
-tama_height_game = int(original_height * game_scale_factor)
-
+# 이미지 정보
 emotion_types = ["joy", "eat", "rest", "sad", "zz"]
 tama_images = {
     stage: {
-        emo: pygame.transform.scale(
-            pygame.image.load(f"assets/tama{stage}_{emo}.png").convert_alpha(),
-            (tama_width, tama_height)
-        ) for emo in emotion_types
+        emo: pygame.image.load(f"assets/tama{stage}_{emo}.png").convert_alpha()
+        for emo in emotion_types
     } for stage in range(1, 5)
 }
+tama_img_game = pygame.image.load("assets/tama1_joy.png").convert_alpha()
+tama_width, tama_height = tama_images[1]["joy"].get_size()
 
+# 진화 단계 계산
 def get_evolution_stage(evo):
     return 1 if evo < 25 else 2 if evo < 50 else 3 if evo < 75 else 4
 
 # 초기 상태
 status = init_status()
-state = "main"
+state = "start"
 rest_mode = False
-button_pressed = [True, False, False]  # 홈 기본 선택
+button_pressed = [True, False, False]
 menu_rects = []
 food, food_radius, eating = None, 10, False
 eat_timer, rest_text_index, rest_text_timer = 0, 0, 0
 tama_speed = 5
 
-# 위치
+# 위치 계산
 egg_w, egg_h = 500, 580
 egg_x = (WIDTH - (egg_w + 250 + 40)) // 2
 egg_y = (HEIGHT - egg_h) // 2
@@ -75,26 +63,14 @@ egg_center_y = egg_y + egg_h // 2
 tama_x = egg_center_x - tama_width // 2
 tama_y = egg_center_y - tama_height // 2
 
-# 게임 이미지 (게임 화면용 캐릭터)
-tama_img_game = pygame.transform.scale(sample_image, (tama_width_game, tama_height_game))
-
-#시작화면 변수
-clock = pygame.time.Clock()
+# 시작화면
 font_start = pygame.font.SysFont("Arial", 24, bold=True)
-# 상태 변수
-state = "start"  # start, instruction, nickname, nickname_done, game
-# 가상 키보드 세팅
-vkeys = [
-    ['A','B','C','D','E','F','G','H','I','J'],
-    ['K','L','M','N','O','P','Q','R','S','T'],
-    ['U','V','W','X','Y','Z','SPACE','DEL','ENTER']
-]
+vkeys = [['A','B','C','D','E','F','G','H','I','J'], ['K','L','M','N','O','P','Q','R','S','T'], ['U','V','W','X','Y','Z','SPACE','DEL','ENTER']]
 vk_row, vk_col = 0, 0
 nickname = ""
-# 시작화면 버튼 선택 인덱스 0=start, 1=instruction
 start_select_idx = 0
 
-# 게임 변수 초기화
+# 게임 관련 변수
 player_x, player_y = egg_center_x, egg_y + 400
 enemy_spawn_timer, score, lives, shooting_game_over = 0, 0, 3, False
 bullets, enemies, bullet_speed, enemy_speed = [], [], 10, 3
@@ -107,7 +83,7 @@ dodger_x, dodger_y = 0, 0
 dodger_speed, dodger_lives, dodger_score, dodging_game_over = 5, 3, 0, False
 falling_objects, falling_timer, falling_interval = [], 0, 40
 
-# 상태 업데이트
+# 상태 업데이트 함수
 def update_all_status():
     update_mood(status, 20, 40)
     update_hunger(status)
@@ -115,7 +91,6 @@ def update_all_status():
     update_health(status)
     update_evolution(status)
 
-# 음식 생성
 def spawn_food(screen_rect):
     margin = 40
     return (
@@ -123,7 +98,6 @@ def spawn_food(screen_rect):
         random.randint(screen_rect.top + margin, screen_rect.bottom - margin)
     )
 
-# UI 그리기
 def draw_status_bar(label, value, x, y, color):
     pygame.draw.rect(screen, GRAY, (x, y, 200, 16))
     pygame.draw.rect(screen, color, (x, y, 200 * value // 100, 16))
