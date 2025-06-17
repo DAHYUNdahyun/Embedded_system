@@ -80,7 +80,8 @@ running_score, running_lives, running_game_over = 0, 3, False
 is_jumping, jump_velocity, jump_count, MAX_JUMPS = False, 0, 0, 5
 dodger_x, dodger_y = 0, 0
 dodger_speed, dodger_lives, dodger_score, dodging_game_over = 5, 3, 0, False
-falling_objects, falling_timer, falling_interval = [], 0, 40
+falling_objects, falling_timer, falling_interval = [], 0, 40    
+exit_button = None
 
 # 상태 업데이트 함수
 def update_all_status():
@@ -143,6 +144,7 @@ running = True
 while running:
     screen.fill(WHITE)
     keys = pygame.key.get_pressed()
+
     
     # 1. 진화 단계 및 감정에 맞는 이미지 선택
     evo = get_evolution_stage(status["evolution"])
@@ -166,7 +168,7 @@ while running:
         screen_rect, left_buttons = draw_shell_ui(keys)
     else:
         screen_rect, left_buttons = None, []
-
+        
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
             running = False
@@ -226,6 +228,10 @@ while running:
         
         elif event.type == pygame.MOUSEBUTTONDOWN:
             mx, my = pygame.mouse.get_pos()
+            
+            if exit_button is not None and exit_button.collidepoint((mx, my)):
+                state = "game_select"
+            
             for i, rect in enumerate(left_buttons):
                 if rect.collidepoint(mx, my):
                     button_pressed = [False, False, False]
@@ -299,6 +305,13 @@ while running:
             menu_rects = draw_game_select_menu(screen, screen_rect, font, (BLACK, GRAY))
     elif state == "shooting":
             screen_rect, _ = draw_shell_ui(keys)
+            
+            exit_button = pygame.Rect(screen_rect.right - 40, screen_rect.top + 10, 30, 30)
+            pygame.draw.rect(screen, GRAY, exit_button, border_radius=8)
+            pygame.draw.rect(screen, BLACK, exit_button, 2, border_radius=8)
+            text = font.render("←", True, BLACK)
+            screen.blit(text, (exit_button.x + 10, exit_button.y + 5))
+            
             bullets, enemies, enemy_spawn_timer, score, lives, shooting_game_over = draw_shooting_game(
                 screen, screen_rect, img_scaled_game, player_x, player_y,
                 bullet_speed, enemy_speed, bullets, enemies, enemy_spawn_timer,
@@ -307,6 +320,13 @@ while running:
     elif state == "running":
             screen_rect, _ = draw_shell_ui(keys)
             ground_y = screen_rect.bottom - 70
+            
+            exit_button = pygame.Rect(screen_rect.right - 40, screen_rect.top + 10, 30, 30)
+            pygame.draw.rect(screen, GRAY, exit_button, border_radius=8)
+            pygame.draw.rect(screen, BLACK, exit_button, 2, border_radius=8)
+            text = font.render("←", True, BLACK)
+            screen.blit(text, (exit_button.x + 10, exit_button.y + 5))
+                       
             runner_y, is_jumping, jump_velocity, jump_count, obstacles, stars, obstacle_timer, running_score, running_lives, running_game_over = draw_running_game(
                 screen, screen_rect, ground_y, gravity, img_scaled_game, 80, font, (BLACK, YELLOW, RED),
                 runner_y, is_jumping, jump_velocity, jump_count,
@@ -315,10 +335,19 @@ while running:
             )
     elif state == "dodging":
             screen_rect, _ = draw_shell_ui(keys)
+            
+            exit_button = pygame.Rect(screen_rect.right - 40, screen_rect.top + 10, 30, 30)
+            pygame.draw.rect(screen, GRAY, exit_button, border_radius=8)
+            pygame.draw.rect(screen, BLACK, exit_button, 2, border_radius=8)
+            text = font.render("←", True, BLACK)
+            screen.blit(text, (exit_button.x + 10, exit_button.y + 5))
+            
             dodger_x, dodger_y, falling_objects, falling_timer, dodger_score, dodger_lives, dodging_game_over = draw_dodging_game(
                 screen, screen_rect, img_scaled_game, falling_interval, font, (PINK, RED, BLACK),
                 dodger_x, dodger_y, falling_objects, falling_timer, dodger_score, dodger_lives, dodging_game_over
             )
+
+        
     if state == "shooting":
         if keys[pygame.K_LEFT] and player_x > screen_rect.left + 20:
             player_x -= 5
@@ -329,14 +358,7 @@ while running:
             dodger_x -= dodger_speed
         if keys[pygame.K_RIGHT] and dodger_x < screen_rect.right - 60:
             dodger_x += dodger_speed
-    # if keys[pygame.K_LEFT]:
-    #     tama_x -= tama_speed
-    # if keys[pygame.K_RIGHT]:
-    #     tama_x += tama_speed
-    # if keys[pygame.K_UP]:
-    #     tama_y -= tama_speed
-    # if keys[pygame.K_DOWN]:
-    #     tama_y += tama_speed
+
     if screen_rect:
         tama_x = max(screen_rect.left, min(tama_x, screen_rect.right - tama_width))
         tama_y = max(screen_rect.top, min(tama_y, screen_rect.bottom - tama_height))
