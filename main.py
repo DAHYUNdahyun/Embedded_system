@@ -37,7 +37,6 @@ tama_images = {
         for emo in emotion_types
     } for stage in range(1, 5)
 }
-tama_img_game = pygame.image.load("assets/tama1_joy.png").convert_alpha()
 tama_width, tama_height = tama_images[1]["joy"].get_size()
 
 # 진화 단계 계산
@@ -145,6 +144,24 @@ while running:
     screen.fill(WHITE)
     keys = pygame.key.get_pressed()
     
+    # 1. 진화 단계 및 감정에 맞는 이미지 선택
+    evo = get_evolution_stage(status["evolution"])
+    emo = "rest" if rest_mode else "eat" if eating else "sad" if status["mood"] < 50 else "joy"
+    image = tama_images[evo][emo]
+
+    # 2. 스케일 비율 적용
+    target_width = 150
+    iw, ih = image.get_size()
+    scale_ratio = target_width / iw
+    new_size = (int(iw * scale_ratio), int(ih * scale_ratio))
+    img_scaled = pygame.transform.scale(image, new_size)
+    img_scaled_width, img_scaled_height = new_size
+    tama_width, tama_height = new_size
+    
+    game_width = 80
+    game_ratio = game_width / iw
+    img_scaled_game = pygame.transform.scale(image, (int(iw * game_ratio), int(ih * game_ratio)))
+        
     if state in ["main", "game_select", "shooting", "running", "dodging"]:
         screen_rect, left_buttons = draw_shell_ui(keys)
     else:
@@ -283,7 +300,7 @@ while running:
     elif state == "shooting":
             screen_rect, _ = draw_shell_ui(keys)
             bullets, enemies, enemy_spawn_timer, score, lives, shooting_game_over = draw_shooting_game(
-                screen, screen_rect, tama_img_game, player_x, player_y,
+                screen, screen_rect, img_scaled_game, player_x, player_y,
                 bullet_speed, enemy_speed, bullets, enemies, enemy_spawn_timer,
                 score, lives, shooting_game_over, font, (RED, BLACK)
             )
@@ -291,7 +308,7 @@ while running:
             screen_rect, _ = draw_shell_ui(keys)
             ground_y = screen_rect.bottom - 70
             runner_y, is_jumping, jump_velocity, jump_count, obstacles, stars, obstacle_timer, running_score, running_lives, running_game_over = draw_running_game(
-                screen, screen_rect, ground_y, gravity, tama_img_game, 80, font, (BLACK, YELLOW, RED),
+                screen, screen_rect, ground_y, gravity, img_scaled_game, 80, font, (BLACK, YELLOW, RED),
                 runner_y, is_jumping, jump_velocity, jump_count,
                 obstacles, stars, obstacle_timer,
                 running_score, running_lives, running_game_over
@@ -299,7 +316,7 @@ while running:
     elif state == "dodging":
             screen_rect, _ = draw_shell_ui(keys)
             dodger_x, dodger_y, falling_objects, falling_timer, dodger_score, dodger_lives, dodging_game_over = draw_dodging_game(
-                screen, screen_rect, tama_img_game, falling_interval, font, (PINK, RED, BLACK),
+                screen, screen_rect, img_scaled_game, falling_interval, font, (PINK, RED, BLACK),
                 dodger_x, dodger_y, falling_objects, falling_timer, dodger_score, dodger_lives, dodging_game_over
             )
     if state == "shooting":
@@ -312,14 +329,14 @@ while running:
             dodger_x -= dodger_speed
         if keys[pygame.K_RIGHT] and dodger_x < screen_rect.right - 60:
             dodger_x += dodger_speed
-    if keys[pygame.K_LEFT]:
-        tama_x -= tama_speed
-    if keys[pygame.K_RIGHT]:
-        tama_x += tama_speed
-    if keys[pygame.K_UP]:
-        tama_y -= tama_speed
-    if keys[pygame.K_DOWN]:
-        tama_y += tama_speed
+    # if keys[pygame.K_LEFT]:
+    #     tama_x -= tama_speed
+    # if keys[pygame.K_RIGHT]:
+    #     tama_x += tama_speed
+    # if keys[pygame.K_UP]:
+    #     tama_y -= tama_speed
+    # if keys[pygame.K_DOWN]:
+    #     tama_y += tama_speed
     if screen_rect:
         tama_x = max(screen_rect.left, min(tama_x, screen_rect.right - tama_width))
         tama_y = max(screen_rect.top, min(tama_y, screen_rect.bottom - tama_height))
@@ -328,15 +345,6 @@ while running:
     # 휴식 모드 해제 조건
     if not button_pressed[2]:
         rest_mode = False
-
-    # 캐릭터 이동 (메인에서만)
-    if not rest_mode and state == "main":
-        if keys[pygame.K_LEFT]: tama_x -= tama_speed
-        if keys[pygame.K_RIGHT]: tama_x += tama_speed
-        if keys[pygame.K_UP]: tama_y -= tama_speed
-        if keys[pygame.K_DOWN]: tama_y += tama_speed
-        tama_x = max(screen_rect.left, min(tama_x, screen_rect.right - tama_width))
-        tama_y = max(screen_rect.top, min(tama_y, screen_rect.bottom - tama_height))
 
     update_all_status()
 
@@ -352,11 +360,18 @@ while running:
         pygame.draw.circle(screen, RED, food, food_radius)
     if eating and pygame.time.get_ticks() - eat_timer > 300:
         eating = False
-
+        
     if state == "main":
-        evo = get_evolution_stage(status["evolution"])
-        emo = "rest" if rest_mode else "eat" if eating else "sad" if status["mood"] < 50 else "joy"
-        screen.blit(tama_images[evo][emo], (tama_x, tama_y))
+        if not rest_mode:
+            if keys[pygame.K_LEFT]: tama_x -= tama_speed
+            if keys[pygame.K_RIGHT]: tama_x += tama_speed
+            if keys[pygame.K_UP]: tama_y -= tama_speed
+            if keys[pygame.K_DOWN]: tama_y += tama_speed
+            
+        tama_x = max(screen_rect.left, min(tama_x, screen_rect.right - tama_width))
+        tama_y = max(screen_rect.top, min(tama_y, screen_rect.bottom - tama_height))
+
+        screen.blit(img_scaled, (tama_x, tama_y))
 
     if rest_mode:
         rest(status)
