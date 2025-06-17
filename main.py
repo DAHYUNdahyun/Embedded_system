@@ -73,7 +73,7 @@ start_select_idx = 0
 player_x, player_y = egg_center_x, egg_y + 400
 enemy_spawn_timer, score, lives, shooting_game_over = 0, 0, 3, False
 bullets, enemies, bullet_speed, enemy_speed = [], [], 10, 3
-runner_x, runner_y = egg_center_x - 50, egg_center_y
+runner_x, runner_y = egg_center_x - 50, egg_center_y + 60
 runner_speed, gravity = 3, 0.5
 obstacles, stars, obstacle_timer, star_timer = [], [], 0, 0
 running_score, running_lives, running_game_over = 0, 3, False
@@ -319,20 +319,19 @@ while running:
             )
     elif state == "running":
             screen_rect, _ = draw_shell_ui(keys)
-            ground_y = screen_rect.bottom - 70
+                        
+            runner_y, is_jumping, jump_velocity, jump_count, obstacles, stars, obstacle_timer, running_score, running_lives, running_game_over = draw_running_game(
+                screen, screen_rect, gravity, img_scaled_game, 80, font, (BLACK, YELLOW, RED),
+                runner_y, is_jumping, jump_velocity, jump_count,
+                obstacles, stars, obstacle_timer,
+                running_score, running_lives, running_game_over
+            )
             
             exit_button = pygame.Rect(screen_rect.right - 40, screen_rect.top + 10, 30, 30)
             pygame.draw.rect(screen, GRAY, exit_button, border_radius=8)
             pygame.draw.rect(screen, BLACK, exit_button, 2, border_radius=8)
             text = font.render("←", True, BLACK)
             screen.blit(text, (exit_button.x + 10, exit_button.y + 5))
-                       
-            runner_y, is_jumping, jump_velocity, jump_count, obstacles, stars, obstacle_timer, running_score, running_lives, running_game_over = draw_running_game(
-                screen, screen_rect, ground_y, gravity, img_scaled_game, 80, font, (BLACK, YELLOW, RED),
-                runner_y, is_jumping, jump_velocity, jump_count,
-                obstacles, stars, obstacle_timer,
-                running_score, running_lives, running_game_over
-            )
     elif state == "dodging":
             screen_rect, _ = draw_shell_ui(keys)
             
