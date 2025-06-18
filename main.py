@@ -1,6 +1,8 @@
 import pygame
 import sys
 import random
+import board
+import adafruit_dht
 from status.base_status import init_status
 from status.mood import update_mood
 from status.hunger import update_hunger, feed
@@ -22,6 +24,8 @@ screen = pygame.display.set_mode((WIDTH, HEIGHT))
 pygame.display.set_caption("Tamagotchi Style UI")
 clock = pygame.time.Clock()
 load_heart_images()
+
+dhtDevice = adafruit_dht.DHT11(board.D17)
 
 # 전역 상수
 WHITE, BLACK, YELLOW, PINK, BLUE, RED, GRAY = (255,255,255), (0,0,0), (255,230,0), (255,100,180), (0,180,255), (255,0,0), (200,200,200)
@@ -102,7 +106,7 @@ falling_item_img = pygame.transform.scale(falling_item_img, (40, 40))
 
 # 상태 업데이트 함수
 def update_all_status():
-    update_mood(status, 20, 40)
+    #update_mood(status, 20, 40)
     update_hunger(status)
     check_sleep_restore(status)
     update_health(status)
@@ -114,6 +118,22 @@ def spawn_food(screen_rect):
     y = random.randint(screen_rect.top + margin, screen_rect.bottom - margin)
     image = random.choice(food_images)
     return (x, y), image
+   
+def read_temperature_humidity():
+    try:
+        temp = dhtDevice.temperature
+        humid = dhtDevice.humidity
+        return temp, humid
+    except Exception as e:
+        print("can't read", e)
+        return None, None
+       
+def draw_temp_humid_bar(temp, humid):
+    text = f"temperature: {temp}°C / humidity: {humid}%"
+    rendered = font.render(text, True, BLACK)
+    text_rect = rendered.get_rect()
+    text_rect.topright = (WIDTH - 20, 10)
+    screen.blit(rendered, text_rect)
 
 def draw_status_bar(label, value, x, y, color):
     pygame.draw.rect(screen, GRAY, (x, y, 200, 16))
@@ -176,7 +196,7 @@ while running:
     screen.fill(WHITE)
     keys = pygame.key.get_pressed()
 
-    
+   
     # 1. 진화 단계 및 감정에 맞는 이미지 선택
     evo = get_evolution_stage(status["evolution"])
     emo = "rest" if rest_mode else "eat" if eating else "sad" if status["mood"] < 50 else "joy"
@@ -190,16 +210,16 @@ while running:
     img_scaled = pygame.transform.scale(image, new_size)
     img_scaled_width, img_scaled_height = new_size
     tama_width, tama_height = new_size
-    
+   
     game_width = 80
     game_ratio = game_width / iw
     img_scaled_game = pygame.transform.scale(image, (int(iw * game_ratio), int(ih * game_ratio)))
-        
+       
     if state in ["main", "game_select", "shooting", "running", "dodging"]:
         screen_rect, left_buttons = draw_shell_ui(keys)
     else:
         screen_rect, left_buttons = None, []
-        
+       
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
             running = False
@@ -256,10 +276,10 @@ while running:
             if event.type == pygame.KEYDOWN:
                 # 아무 키나 누르면 게임 시작
                 state = "main"
-        
+       
         elif event.type == pygame.MOUSEBUTTONDOWN:
             mx, my = pygame.mouse.get_pos()
-            
+           
             if exit_button is not None and exit_button.collidepoint((mx, my)):
                 if state == "shooting":
                     bullets.clear()
@@ -285,9 +305,9 @@ while running:
                     dodging_game_over = False
                     dodger_x = 0
                     dodger_y = 0
-                    
+                   
                 state = "game_select"    
-            
+           
             for i, rect in enumerate(left_buttons):
                 if rect.collidepoint(mx, my):
                     button_pressed = [False, False, False]
@@ -356,7 +376,7 @@ while running:
 
     elif state == "main":
             screen_rect, left_buttons = draw_shell_ui(keys)
-            
+           
             if not tama_initialized:
                 tama_x = screen_rect.centerx - tama_width // 2
                 tama_y = screen_rect.centery - tama_height // 2
@@ -366,52 +386,52 @@ while running:
             menu_rects = draw_game_select_menu(screen, screen_rect, font, (BLACK, GRAY))
     elif state == "shooting":
             screen_rect, _ = draw_shell_ui(keys)
-            
+           
             tama_w, tama_h = img_scaled_game.get_size()
-            
+           
             bullets, enemies, enemy_spawn_timer, score, lives, shooting_game_over = draw_shooting_game(
                 screen, screen_rect, shooting_bg, img_scaled_game, enemy_img, player_x, player_y,
                 bullet_speed, enemy_speed, bullets, enemies, enemy_spawn_timer,
                 score, lives, shooting_game_over, font, (RED, BLACK, WHITE)
             )
-            
+           
             exit_button = pygame.Rect(screen_rect.right - 40, screen_rect.top + 10, 30, 30)
             pygame.draw.rect(screen, GRAY, exit_button, border_radius=8)
             pygame.draw.rect(screen, BLACK, exit_button, 2, border_radius=8)
             text = font.render("←", True, BLACK)
             screen.blit(text, (exit_button.x + 10, exit_button.y + 5))
-            
+           
     elif state == "running":
             screen_rect, _ = draw_shell_ui(keys)
-                        
+                       
             runner_y, is_jumping, jump_velocity, jump_count, obstacles, stars, obstacle_timer, running_score, running_lives, running_game_over = draw_running_game(
                 screen, screen_rect, running_bg, gravity, img_scaled_game, coin_img, 80, font, (BLACK, YELLOW, RED),
                 runner_y, is_jumping, jump_velocity, jump_count,
                 obstacles, stars, obstacle_timer,
                 running_score, running_lives, running_game_over
             )
-            
+           
             exit_button = pygame.Rect(screen_rect.right - 40, screen_rect.top + 10, 30, 30)
             pygame.draw.rect(screen, GRAY, exit_button, border_radius=8)
             pygame.draw.rect(screen, BLACK, exit_button, 2, border_radius=8)
             text = font.render("←", True, BLACK)
             screen.blit(text, (exit_button.x + 10, exit_button.y + 5))
-            
+           
     elif state == "dodging":
             screen_rect, _ = draw_shell_ui(keys)
-            
+           
             dodger_x, dodger_y, falling_objects, falling_timer, dodger_score, dodger_lives, dodging_game_over = draw_dodging_game(
                 screen, screen_rect, dodging_bg, img_scaled_game, falling_item_img, falling_interval, font, (PINK, RED, WHITE),
                 dodger_x, dodger_y, falling_objects, falling_timer, dodger_score, dodger_lives, dodging_game_over
             )
-            
+           
             exit_button = pygame.Rect(screen_rect.right - 40, screen_rect.top + 10, 30, 30)
             pygame.draw.rect(screen, GRAY, exit_button, border_radius=8)
             pygame.draw.rect(screen, BLACK, exit_button, 2, border_radius=8)
             text = font.render("←", True, BLACK)
             screen.blit(text, (exit_button.x + 10, exit_button.y + 5))
 
-        
+       
     if state == "shooting":
         if keys[pygame.K_LEFT] and player_x - tama_w // 2 > screen_rect.left:
             player_x -= 5
@@ -435,6 +455,12 @@ while running:
         rest_mode = False
 
     update_all_status()
+   
+    temp, humid = read_temperature_humidity()
+    if temp is not None and humid is not None:
+        update_mood(status, temp, humid)
+        draw_temp_humid_bar(temp, humid)
+        print(f"temp: {temp}C, humid: {humid}%, mood: {status['mood']}")
 
     if food:
         (fx, fy), _ = food
@@ -449,14 +475,14 @@ while running:
         screen.blit(food_img, (fx - food_img.get_width() // 2, fy - food_img.get_height() // 2))
     if eating and pygame.time.get_ticks() - eat_timer > 300:
         eating = False
-        
+       
     if state == "main":
         if not rest_mode:
             if keys[pygame.K_LEFT]: tama_x -= tama_speed
             if keys[pygame.K_RIGHT]: tama_x += tama_speed
             if keys[pygame.K_UP]: tama_y -= tama_speed
             if keys[pygame.K_DOWN]: tama_y += tama_speed
-            
+           
         tama_x = max(screen_rect.left, min(tama_x, screen_rect.right - tama_width))
         tama_y = max(screen_rect.top, min(tama_y, screen_rect.bottom - tama_height))
 
