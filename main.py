@@ -147,7 +147,7 @@ def load_food_images():
     food_images = []
     for filename in food_image_files:
         img = pygame.image.load(f"assets/food/" + filename).convert_alpha()
-        img = pygame.transform.scale(img, (100, 100))
+        img = pygame.transform.scale(img, (50, 50))
         food_images.append(img)
     return food_images
 
@@ -166,7 +166,7 @@ while running:
     image = tama_images[evo][emo]
 
     # 2. 스케일 비율 적용
-    target_width = 150
+    target_width = 100
     iw, ih = image.get_size()
     scale_ratio = target_width / iw
     new_size = (int(iw * scale_ratio), int(ih * scale_ratio))
