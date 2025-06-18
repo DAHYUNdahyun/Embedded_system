@@ -11,7 +11,7 @@ def draw_dodging_game(screen, screen_rect, tama_img_game, falling_interval, font
     # 플레이어 위치 초기화 (처음 진입 시)
     if dodger_x == 0:
         dodger_x = screen_rect.centerx - 30
-        dodger_y = screen_rect.bottom - 70
+        dodger_y = screen_rect.bottom - 90
 
     # 플레이어 그리기
     screen.blit(tama_img_game, (dodger_x, dodger_y))
