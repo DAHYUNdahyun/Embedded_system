@@ -357,6 +357,8 @@ while running:
     elif state == "shooting":
             screen_rect, _ = draw_shell_ui(keys)
             
+            tama_w, tama_h = img_scaled_game.get_size()
+            
             exit_button = pygame.Rect(screen_rect.right - 40, screen_rect.top + 10, 30, 30)
             pygame.draw.rect(screen, GRAY, exit_button, border_radius=8)
             pygame.draw.rect(screen, BLACK, exit_button, 2, border_radius=8)
@@ -399,14 +401,16 @@ while running:
 
         
     if state == "shooting":
-        if keys[pygame.K_LEFT] and player_x > screen_rect.left + 20:
+        if keys[pygame.K_LEFT] and player_x - tama_w // 2 > screen_rect.left:
             player_x -= 5
-        if keys[pygame.K_RIGHT] and player_x < screen_rect.right - 20:
+        if keys[pygame.K_RIGHT] and player_x + tama_w // 2 < screen_rect.right:
             player_x += 5
     if state == "dodging":
-        if keys[pygame.K_LEFT] and dodger_x > screen_rect.left + 10:
+        dodge_w, _ = img_scaled_game.get_size()
+
+        if keys[pygame.K_LEFT] and dodger_x > screen_rect.left:
             dodger_x -= dodger_speed
-        if keys[pygame.K_RIGHT] and dodger_x < screen_rect.right - 60:
+        if keys[pygame.K_RIGHT] and dodger_x + dodge_w < screen_rect.right:
             dodger_x += dodger_speed
 
     if screen_rect:

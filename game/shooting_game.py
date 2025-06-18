@@ -11,11 +11,13 @@ def draw_shooting_game(screen, screen_rect, background_img, tama_img_game, enemy
     # 배경 그리기
     screen.blit(background_img, screen_rect.topleft)
 
-    # 플레이어 그리기
-    screen.blit(tama_img_game, (player_x - 30, player_y - 30))
-
     # 적 이미지 크기 가져오기
     enemy_w, enemy_h = enemy_img.get_size()
+    tama_w, tama_h = tama_img_game.get_size()
+
+    # 플레이어 그리기 (중앙 기준으로 이미지 배치)
+    screen.blit(tama_img_game, (player_x - tama_w // 2, player_y - tama_h // 2))
+
         
     if not shooting_game_over:
         # 총알 이동 및 그리기
