@@ -6,7 +6,7 @@ def init_status():
         "fatigue": 80,
         "hunger": 80,
         "health": 100,
-        "evolution": 100,
+        "evolution": 60,
         "last_sleep_time": None,
         "last_rest_time": None,
         "last_meal_time": time.time(),
