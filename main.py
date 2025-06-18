@@ -83,6 +83,12 @@ dodger_x, dodger_y = 0, 0
 dodger_speed, dodger_lives, dodger_score, dodging_game_over = 5, 3, 0, False
 falling_objects, falling_timer, falling_interval = [], 0, 40    
 exit_button = None
+shooting_bg = pygame.image.load("assets/game/shooting_background.jpg").convert()
+shooting_bg = pygame.transform.scale(shooting_bg, (320, 350))
+enemy_img = pygame.image.load("assets/game/enemy.png").convert_alpha()
+enemy_img = pygame.transform.scale(enemy_img, (50, 50))  # 크기 조정
+
+
 
 # 상태 업데이트 함수
 def update_all_status():
@@ -358,9 +364,9 @@ while running:
             screen.blit(text, (exit_button.x + 10, exit_button.y + 5))
             
             bullets, enemies, enemy_spawn_timer, score, lives, shooting_game_over = draw_shooting_game(
-                screen, screen_rect, img_scaled_game, player_x, player_y,
+                screen, screen_rect, shooting_bg, img_scaled_game, enemy_img, player_x, player_y,
                 bullet_speed, enemy_speed, bullets, enemies, enemy_spawn_timer,
-                score, lives, shooting_game_over, font, (RED, BLACK)
+                score, lives, shooting_game_over, font, (RED, BLACK, WHITE)
             )
     elif state == "running":
             screen_rect, _ = draw_shell_ui(keys)

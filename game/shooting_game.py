@@ -2,11 +2,14 @@ import pygame
 import random
 from game.draw_heart import draw_lives_hearts
 
-def draw_shooting_game(screen, screen_rect, tama_img_game, player_x, player_y,
+def draw_shooting_game(screen, screen_rect, background_img, tama_img_game, enemy_img, player_x, player_y,
     bullet_speed, enemy_speed,
     bullets, enemies, enemy_spawn_timer, score, lives, shooting_game_over,
     font, colors):
-    RED, BLACK = colors
+    RED, BLACK, WHITE = colors
+    
+    # 배경 그리기
+    screen.blit(background_img, screen_rect.topleft)
 
     # 플레이어 그리기
     screen.blit(tama_img_game, (player_x - 30, player_y - 30))
@@ -29,7 +32,7 @@ def draw_shooting_game(screen, screen_rect, tama_img_game, player_x, player_y,
         # 적 이동 및 그리기
         for enemy in enemies[:]:
             enemy[1] += enemy_speed
-            pygame.draw.rect(screen, BLACK, (enemy[0], enemy[1], 20, 20))
+            screen.blit(enemy_img, (enemy[0], enemy[1]))
             
             # 적이 바닥에 닿으면 생명 감소
             if enemy[1] > screen_rect.bottom:
@@ -59,7 +62,7 @@ def draw_shooting_game(screen, screen_rect, tama_img_game, player_x, player_y,
                     break  # 하나의 총알이 여러 적 제거 못 하게 break
     
     # 점수 표시
-    score_text = font.render(f"score : {score}", True, BLACK)
+    score_text = font.render(f"score : {score}", True, WHITE)
     screen.blit(score_text, (screen_rect.left + 13, screen_rect.top + 10))
     
     # 생명 표시
