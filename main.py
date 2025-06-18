@@ -251,6 +251,8 @@ while running:
                     score = 0
                     lives = 3
                     shooting_game_over = False
+                    player_x = egg_center_x
+                    player_y = egg_y + 400
                 elif state == "running":
                     obstacles.clear()
                     stars.clear()
