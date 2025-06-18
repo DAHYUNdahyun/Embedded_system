@@ -93,10 +93,10 @@ def update_all_status():
 
 def spawn_food(screen_rect):
     margin = 40
-    return (
-        random.randint(screen_rect.left + margin, screen_rect.right - margin),
-        random.randint(screen_rect.top + margin, screen_rect.bottom - margin)
-    )
+    x = random.randint(screen_rect.left + margin, screen_rect.right - margin)
+    y = random.randint(screen_rect.top + margin, screen_rect.bottom - margin)
+    image = random.choice(food_images)
+    return (x, y), image
 
 def draw_status_bar(label, value, x, y, color):
     pygame.draw.rect(screen, GRAY, (x, y, 200, 16))
@@ -138,6 +138,20 @@ def draw_shell_ui(keys):
         draw_status_bar(label, status[key], sx, sy + i * 45, color)
 
     return screen_rect, left_buttons
+
+# 음식 이미지 로드
+def load_food_images():
+    food_image_files = [
+        "carrot.png", "chicken.png", "donut.png", "egg_fried.png", "hamburger.png", "pizza.png", "watermelon.png"
+    ]
+    food_images = []
+    for filename in food_image_files:
+        img = pygame.image.load(f"assets/food/" + filename).convert_alpha()
+        img = pygame.transform.scale(img, (100, 100))
+        food_images.append(img)
+    return food_images
+
+food_images = load_food_images()
 
 # 메인 루프
 running = True
@@ -370,7 +384,7 @@ while running:
     update_all_status()
 
     if food:
-        fx, fy = food
+        (fx, fy), _ = food
         cx, cy = tama_x + tama_width // 2, tama_y + tama_height // 2
         if ((fx - cx) ** 2 + (fy - cy) ** 2) ** 0.5 < food_radius + 20:
             food = None
@@ -378,7 +392,8 @@ while running:
             eating = True
             eat_timer = pygame.time.get_ticks()
     if food:
-        pygame.draw.circle(screen, RED, food, food_radius)
+        (fx, fy), food_img = food
+        screen.blit(food_img, (fx - food_img.get_width() // 2, fy - food_img.get_height() // 2))
     if eating and pygame.time.get_ticks() - eat_timer > 300:
         eating = False
         
