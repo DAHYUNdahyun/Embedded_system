@@ -2,23 +2,18 @@ import pygame
 import random
 from game.draw_heart import draw_lives_hearts
 
-def draw_running_game(screen, screen_rect, gravity, tama_img_game, obstacle_interval, font, colors,
+def draw_running_game(screen, screen_rect, background_img, gravity, tama_img_game, obstacle_interval, font, colors,
     runner_y, is_jumping, jump_velocity, jump_count,
     obstacles, stars, obstacle_timer,
     running_score, running_lives, running_game_over):
     BLACK, YELLOW, RED = colors
     
-        # 배경 색상 (하늘)
-    sky_color = (180, 220, 255)
-    ground_color = (100, 200, 100)
-
-    # 전체 배경
-    pygame.draw.rect(screen, sky_color, screen_rect)
+    screen.blit(background_img, screen_rect.topleft)
 
     # 땅 (하단 70px 영역)
     ground_height = 50
     ground_y = screen_rect.bottom - ground_height
-    pygame.draw.rect(screen, ground_color, (screen_rect.left, ground_y, screen_rect.width, ground_height))
+
 
     # 캐릭터 위치 (고정 x)
     runner_x = screen_rect.left + 50

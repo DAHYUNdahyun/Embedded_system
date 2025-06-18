@@ -83,10 +83,13 @@ dodger_x, dodger_y = 0, 0
 dodger_speed, dodger_lives, dodger_score, dodging_game_over = 5, 3, 0, False
 falling_objects, falling_timer, falling_interval = [], 0, 40    
 exit_button = None
-shooting_bg = pygame.image.load("assets/game/shooting_background.jpg").convert()
+shooting_bg = pygame.image.load("assets/game/shooting_background.png").convert()
 shooting_bg = pygame.transform.scale(shooting_bg, (320, 350))
 enemy_img = pygame.image.load("assets/game/enemy.png").convert_alpha()
 enemy_img = pygame.transform.scale(enemy_img, (40, 40))  # 크기 조정
+running_bg = pygame.image.load("assets/game/running_background.png").convert()
+running_bg = pygame.transform.scale(running_bg, (320, 350))
+
 
 
 
@@ -374,7 +377,7 @@ while running:
             screen_rect, _ = draw_shell_ui(keys)
                         
             runner_y, is_jumping, jump_velocity, jump_count, obstacles, stars, obstacle_timer, running_score, running_lives, running_game_over = draw_running_game(
-                screen, screen_rect, gravity, img_scaled_game, 80, font, (BLACK, YELLOW, RED),
+                screen, screen_rect, running_bg, gravity, img_scaled_game, 80, font, (BLACK, YELLOW, RED),
                 runner_y, is_jumping, jump_velocity, jump_count,
                 obstacles, stars, obstacle_timer,
                 running_score, running_lives, running_game_over
