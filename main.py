@@ -142,7 +142,7 @@ def draw_shell_ui(keys):
 # 음식 이미지 로드
 def load_food_images():
     food_image_files = [
-        "carrot.png", "chicken.png", "donut.png", "egg_fried.png", "hamburger.png", "pizza.png", "watermelon.png"
+        "carrot.png", "chicken.png", "donut.png", "egg_fried.png", "hamburger.png", "pizza.png"
     ]
     food_images = []
     for filename in food_image_files:
