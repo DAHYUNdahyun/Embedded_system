@@ -245,7 +245,30 @@ while running:
             mx, my = pygame.mouse.get_pos()
             
             if exit_button is not None and exit_button.collidepoint((mx, my)):
-                state = "game_select"
+                if state == "shooting":
+                    bullets.clear()
+                    enemies.clear()
+                    score = 0
+                    lives = 3
+                    shooting_game_over = False
+                elif state == "running":
+                    obstacles.clear()
+                    stars.clear()
+                    running_score = 0
+                    running_lives = 3
+                    running_game_over = False
+                    is_jumping = False
+                    jump_velocity = 0
+                    jump_count = 0
+                elif state == "dodging":
+                    falling_objects.clear()
+                    dodger_score = 0
+                    dodger_lives = 3
+                    dodging_game_over = False
+                    dodger_x = 0
+                    dodger_y = 0
+                    
+                state = "game_select"    
             
             for i, rect in enumerate(left_buttons):
                 if rect.collidepoint(mx, my):
