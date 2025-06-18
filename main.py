@@ -47,6 +47,7 @@ def get_evolution_stage(evo):
 status = init_status()
 state = "start"
 rest_mode = False
+tama_initialized = False
 button_pressed = [True, False, False]
 menu_rects = []
 food, food_radius, eating = None, 10, False
@@ -314,6 +315,11 @@ while running:
 
     elif state == "main":
             screen_rect, left_buttons = draw_shell_ui(keys)
+            
+            if not tama_initialized:
+                tama_x = screen_rect.centerx - tama_width // 2
+                tama_y = screen_rect.centery - tama_height // 2
+                tama_initialized = True
     elif state == "game_select":
             screen_rect, left_buttons = draw_shell_ui(keys)
             menu_rects = draw_game_select_menu(screen, screen_rect, font, (BLACK, GRAY))
