@@ -2,11 +2,15 @@ import pygame
 import random
 from game.draw_heart import draw_lives_hearts
 
-def draw_dodging_game(screen, screen_rect, tama_img_game, falling_interval, font, colors,
+def draw_dodging_game(screen, screen_rect, background_img, tama_img_game, falling_item_img, falling_interval, font, colors,
     dodger_x, dodger_y,
     falling_objects, falling_timer,
     dodger_score, dodger_lives, dodging_game_over):
-    PINK, RED, BLACK = colors
+    PINK, RED, WHITE = colors
+    
+        
+    # 배경 그리기
+    screen.blit(background_img, screen_rect.topleft)
 
     # 플레이어 위치 초기화 (처음 진입 시)
     if dodger_x == 0:
@@ -27,7 +31,8 @@ def draw_dodging_game(screen, screen_rect, tama_img_game, falling_interval, font
         # 물체 이동 및 충돌
         for obj in falling_objects[:]:
             obj[1] += 5
-            pygame.draw.circle(screen, PINK, (obj[0] + 15, obj[1] + 15), 15)
+            
+            screen.blit(falling_item_img, (obj[0], obj[1]))
 
             # 충돌
             dist = ((dodger_x + 30 - (obj[0] + 15)) ** 2 + (dodger_y + 30 - (obj[1] + 15)) ** 2) ** 0.5
@@ -42,7 +47,7 @@ def draw_dodging_game(screen, screen_rect, tama_img_game, falling_interval, font
                 dodger_score += 1
 
     # 점수 & 생명
-    score_text = font.render(f"score : {dodger_score}", True, BLACK)
+    score_text = font.render(f"score : {dodger_score}", True, WHITE)
     screen.blit(score_text, (screen_rect.left + 10, screen_rect.top + 10))
     draw_lives_hearts(screen, screen_rect.left + 10, screen_rect.top + 40, dodger_lives)
 

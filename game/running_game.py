@@ -2,7 +2,7 @@ import pygame
 import random
 from game.draw_heart import draw_lives_hearts
 
-def draw_running_game(screen, screen_rect, background_img, gravity, tama_img_game, obstacle_interval, font, colors,
+def draw_running_game(screen, screen_rect, background_img, gravity, tama_img_game, coin_img, obstacle_interval, font, colors,
     runner_y, is_jumping, jump_velocity, jump_count,
     obstacles, stars, obstacle_timer,
     running_score, running_lives, running_game_over):
@@ -64,7 +64,7 @@ def draw_running_game(screen, screen_rect, background_img, gravity, tama_img_gam
 
         for star in stars[:]:
             star["pos"][0] -= star["speed"]
-            pygame.draw.circle(screen, YELLOW, (star["pos"][0]+15, star["pos"][1]+15), 15)
+            screen.blit(coin_img, (star["pos"][0], star["pos"][1]))
             # 충돌 검사
             if runner_y < star["pos"][1] + 30 and screen_rect.left + 50 < star["pos"][0] < screen_rect.left + 90:
                 stars.remove(star)

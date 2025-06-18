@@ -89,6 +89,13 @@ enemy_img = pygame.image.load("assets/game/enemy.png").convert_alpha()
 enemy_img = pygame.transform.scale(enemy_img, (40, 40))  # 크기 조정
 running_bg = pygame.image.load("assets/game/running_background.png").convert()
 running_bg = pygame.transform.scale(running_bg, (320, 350))
+coin_img = pygame.image.load("assets/game/coin.png").convert_alpha()
+coin_img = pygame.transform.scale(coin_img, (40, 40))  # 크기 조정
+dodging_bg = pygame.image.load("assets/game/dodging_background.png").convert()
+dodging_bg = pygame.transform.scale(dodging_bg, (320, 350))
+falling_item_img = pygame.image.load("assets/game/falling_item.png").convert_alpha()
+falling_item_img = pygame.transform.scale(falling_item_img, (40, 40))  
+
 
 
 
@@ -378,7 +385,7 @@ while running:
             screen_rect, _ = draw_shell_ui(keys)
                         
             runner_y, is_jumping, jump_velocity, jump_count, obstacles, stars, obstacle_timer, running_score, running_lives, running_game_over = draw_running_game(
-                screen, screen_rect, running_bg, gravity, img_scaled_game, 80, font, (BLACK, YELLOW, RED),
+                screen, screen_rect, running_bg, gravity, img_scaled_game, coin_img, 80, font, (BLACK, YELLOW, RED),
                 runner_y, is_jumping, jump_velocity, jump_count,
                 obstacles, stars, obstacle_timer,
                 running_score, running_lives, running_game_over
@@ -394,7 +401,7 @@ while running:
             screen_rect, _ = draw_shell_ui(keys)
             
             dodger_x, dodger_y, falling_objects, falling_timer, dodger_score, dodger_lives, dodging_game_over = draw_dodging_game(
-                screen, screen_rect, img_scaled_game, falling_interval, font, (PINK, RED, BLACK),
+                screen, screen_rect, dodging_bg, img_scaled_game, falling_item_img, falling_interval, font, (PINK, RED, WHITE),
                 dodger_x, dodger_y, falling_objects, falling_timer, dodger_score, dodger_lives, dodging_game_over
             )
             
