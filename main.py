@@ -92,7 +92,7 @@ def update_all_status():
     update_evolution(status)
 
 def spawn_food(screen_rect):
-    margin = 40
+    margin = 60
     x = random.randint(screen_rect.left + margin, screen_rect.right - margin)
     y = random.randint(screen_rect.top + margin, screen_rect.bottom - margin)
     image = random.choice(food_images)
