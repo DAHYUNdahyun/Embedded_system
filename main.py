@@ -3,6 +3,7 @@ import sys
 import random
 import board
 import adafruit_dht
+import RPi.GPIO as GPIO
 from status.base_status import init_status
 from status.mood import update_mood
 from status.hunger import update_hunger, feed
@@ -26,6 +27,13 @@ clock = pygame.time.Clock()
 load_heart_images()
 
 dhtDevice = adafruit_dht.DHT11(board.D17)
+
+tilt_reacted = False
+tilt_stage = 0
+tilt_timer = 0
+TILT_PIN = 27
+GPIO.setmode(GPIO.BCM)
+GPIO.setup(TILT_PIN, GPIO.IN, pull_up_down=GPIO.PUD_UP)
 
 # 전역 상수
 WHITE, BLACK, YELLOW, PINK, BLUE, RED, GRAY = (255,255,255), (0,0,0), (255,230,0), (255,100,180), (0,180,255), (255,0,0), (200,200,200)
@@ -381,6 +389,40 @@ while running:
                 tama_x = screen_rect.centerx - tama_width // 2
                 tama_y = screen_rect.centery - tama_height // 2
                 tama_initialized = True
+            if not tilt_reacted and GPIO.input(TILT_PIN) == GPIO.LOW:
+                tilt_reacted = True
+                tilt_stage = 0
+                tilt_timer = pygame.time.get_ticks()
+            if not tilt_reacted and GPIO.input(TILT_PIN) == GPIO.LOW:
+                tilt_reacted = True
+                tilt_stage = 0
+                tilt_timer = pygame.time.get_ticks()
+
+            if tilt_reacted:
+                now = pygame.time.get_ticks()
+
+                if tilt_stage == 0:
+                    # 1단계: 기존 이미지 안 보이고 회전된 이미지만
+                    rotated_img = pygame.transform.rotate(img_scaled, 90)
+                    screen.blit(rotated_img, (tama_x, tama_y))
+                    if now - tilt_timer > 800:
+                        tilt_stage = 1
+                        tilt_timer = now
+
+                elif tilt_stage == 1:
+                    # 2단계: 진화단계에 맞는 dizzy 이미지 보여주기
+                    evo = get_evolution_stage(status["evolution"])
+                    dizzy_img = pygame.image.load(f"assets/tama{evo}_dizzy.png").convert_alpha()
+                    dizzy_scaled = pygame.transform.scale(dizzy_img, (tama_width, tama_height))
+                    screen.blit(dizzy_scaled, (tama_x, tama_y))
+                    dizzy_text = font.render("I'm dizzy...", True, BLACK)
+                    screen.blit(dizzy_text, (tama_x, tama_y - 30))
+                    if now - tilt_timer > 2000:
+                        tilt_reacted = False  # 원래 상태로 돌아감
+
+            else:
+                # tilt_reacted가 아닌 일반 상태일 때만 원래 이미지 그림
+                screen.blit(img_scaled, (tama_x, tama_y))
     elif state == "game_select":
             screen_rect, left_buttons = draw_shell_ui(keys)
             menu_rects = draw_game_select_menu(screen, screen_rect, font, (BLACK, GRAY))
