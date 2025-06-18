@@ -14,6 +14,9 @@ def draw_shooting_game(screen, screen_rect, background_img, tama_img_game, enemy
     # 플레이어 그리기
     screen.blit(tama_img_game, (player_x - 30, player_y - 30))
 
+    # 적 이미지 크기 가져오기
+    enemy_w, enemy_h = enemy_img.get_size()
+        
     if not shooting_game_over:
         # 총알 이동 및 그리기
         for bullet in bullets[:]:
@@ -32,8 +35,9 @@ def draw_shooting_game(screen, screen_rect, background_img, tama_img_game, enemy
         # 적 이동 및 그리기
         for enemy in enemies[:]:
             enemy[1] += enemy_speed
-            screen.blit(enemy_img, (enemy[0], enemy[1]))
-            
+            ex, ey = enemy[0], enemy[1]
+            screen.blit(enemy_img, (ex - enemy_w // 2, ey - enemy_h // 2))
+                        
             # 적이 바닥에 닿으면 생명 감소
             if enemy[1] > screen_rect.bottom:
                 enemies.remove(enemy)
@@ -53,7 +57,8 @@ def draw_shooting_game(screen, screen_rect, background_img, tama_img_game, enemy
         for bullet in bullets[:]:
             bullet_rect = pygame.Rect(bullet[0] - 3, bullet[1] - 3, 6, 6)  # 총알은 지름 6짜리 원으로 가정
             for enemy in enemies[:]:
-                enemy_rect = pygame.Rect(enemy[0], enemy[1], 20, 20)  # 적은 20x20 정사각형
+                ex, ey = enemy[0], enemy[1]
+                enemy_rect = pygame.Rect(ex - enemy_w // 2, ey - enemy_h // 2, enemy_w, enemy_h)
                 
                 if bullet_rect.colliderect(enemy_rect):  # 충돌 감지!
                     bullets.remove(bullet)

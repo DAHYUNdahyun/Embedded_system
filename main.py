@@ -86,7 +86,7 @@ exit_button = None
 shooting_bg = pygame.image.load("assets/game/shooting_background.jpg").convert()
 shooting_bg = pygame.transform.scale(shooting_bg, (320, 350))
 enemy_img = pygame.image.load("assets/game/enemy.png").convert_alpha()
-enemy_img = pygame.transform.scale(enemy_img, (50, 50))  # 크기 조정
+enemy_img = pygame.transform.scale(enemy_img, (40, 40))  # 크기 조정
 
 
 
