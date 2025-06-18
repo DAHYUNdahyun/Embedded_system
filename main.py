@@ -107,8 +107,13 @@ coin_img = pygame.transform.scale(coin_img, (40, 40))  # 크기 조정
 dodging_bg = pygame.image.load("assets/game/dodging_background.png").convert()
 dodging_bg = pygame.transform.scale(dodging_bg, (320, 350))
 falling_item_img = pygame.image.load("assets/game/falling_item.png").convert_alpha()
-falling_item_img = pygame.transform.scale(falling_item_img, (40, 40))  
-game_played = False
+falling_item_img = pygame.transform.scale(falling_item_img, (40, 40))
+shooting_game_played = False
+running_game_played = False
+dodging_game_played = False
+prev_shooting_over = False
+prev_running_over = False
+prev_dodging_over = False
 
 # 상태 업데이트 함수
 def update_all_status():
@@ -345,7 +350,8 @@ while running:
                     score = 0
                     lives = 3
                     shooting_game_over = False
-                    game_played = False
+                    shooting_game_played = False
+                    prev_shooting_over = False
 
             elif state == "running":
                 if event.key == pygame.K_SPACE and jump_count < MAX_JUMPS:
@@ -360,7 +366,8 @@ while running:
                     running_score = 0
                     running_lives = 3
                     running_game_over = False
-                    game_played = False
+                    running_game_played = False
+                    prev_running_over = False
 
             elif state == "dodging" and event.key == pygame.K_r and dodging_game_over:
                 dodger_x = 0
@@ -369,7 +376,8 @@ while running:
                 dodger_lives = 3
                 falling_objects.clear()
                 dodging_game_over = False
-                game_played = False
+                dodging_game_played = False
+                prev_dodging_over = False
 
     if state == "start":
         draw_start_screen(screen, font_start, start_select_idx)
@@ -540,13 +548,24 @@ while running:
         overlay.fill((100, 100, 100))
         screen.blit(overlay, (screen_rect.left, screen_rect.top))
    
-    if state in ["shooting", "running", "dodging"]:
-        if not game_played:
-            if shooting_game_over or running_game_over or dodging_game_over:
-                status["mood"] = min(100, status["mood"] + 10)
-                status["fatigue"] = min(100, status["fatigue"] + 15)
-                game_played = True
-                print("mood +10 fatigue +15")
+    if state == "shooting" and shooting_game_over and not prev_shooting_over:
+            status["mood"] = min(100, status["mood"] + 10)
+            status["fatigue"] = min(100, status["fatigue"] - 15)
+            shooting_game_played = True
+            prev_shooting_over = True
+            print("mood +10 fatigue +15")
+    if state == "running" and running_game_over and not prev_running_over:
+            status["mood"] = min(100, status["mood"] + 10)
+            status["fatigue"] = min(100, status["fatigue"] - 15)
+            running_game_played = True
+            prev_running_over = True
+            print("mood +10 fatigue +15")
+    if state == "dodging" and dodging_game_over and not prev_dodging_over:
+            status["mood"] = min(100, status["mood"] + 10)
+            status["fatigue"] = min(100, status["fatigue"] - 15)
+            dodging_game_played = True
+            prev_dodging_over = True
+            print("mood +10 fatigue +15")
 
     pygame.display.flip()
     clock.tick(60)
