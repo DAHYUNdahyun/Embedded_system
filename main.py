@@ -1,6 +1,7 @@
 import pygame
 import sys
 import random
+import Adafruit_DHT
 from status.base_status import init_status
 from status.mood import update_mood
 from status.hunger import update_hunger, feed
@@ -28,6 +29,11 @@ WHITE, BLACK, YELLOW, PINK, BLUE, RED, GRAY = (255,255,255), (0,0,0), (255,230,0
 BG_PINK, GREEN = (255,200,220), (0,200,0)
 font = pygame.font.Font("assets/fonts/DungGeunMo.ttf", 24)
 rest_text_list = ["휴 식 중", "휴 식 중 .", "휴 식 중 . .", "휴 식 중 . . ."]
+
+# DHT11 센서 설정
+DHT_SENSOR = Adafruit_DHT.DHT11
+DHT_PIN = 17  # 연결한 GPIO 핀 번호
+MOOD_CHECK_INTERVAL = 10  # 초 단위
 
 # 이미지 정보
 emotion_types = ["joy", "eat", "rest", "sad", "zz"]
@@ -107,6 +113,14 @@ def spawn_food(screen_rect):
     y = random.randint(screen_rect.top + margin, screen_rect.bottom - margin)
     image = random.choice(food_images)
     return (x, y), image
+
+#온습도 읽는 함수
+def read_temperature_and_humidity():
+    humidity, temperature = Adafruit_DHT.read(DHT_SENSOR, DHT_PIN)
+    if humidity is not None and temperature is not None:
+        return temperature, humidity
+    else:
+        return None, None
 
 def draw_status_bar(label, value, x, y, color):
     pygame.draw.rect(screen, GRAY, (x, y, 200, 16))
@@ -426,6 +440,11 @@ while running:
         rest_mode = False
 
     update_all_status()
+    
+    # DHT11 센서로부터 온습도 값 읽기 및 기분 반영
+    temperature, humidity = read_temperature_and_humidity()
+    if temperature is not None and humidity is not None:
+        update_mood(status, temperature, humidity)
 
     if food:
         (fx, fy), _ = food
