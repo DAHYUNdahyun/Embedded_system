@@ -3,6 +3,7 @@ import sys
 import random
 import board
 import adafruit_dht
+import math
 import RPi.GPIO as GPIO
 from status.base_status import init_status
 from status.mood import update_mood
@@ -107,10 +108,7 @@ dodging_bg = pygame.image.load("assets/game/dodging_background.png").convert()
 dodging_bg = pygame.transform.scale(dodging_bg, (320, 350))
 falling_item_img = pygame.image.load("assets/game/falling_item.png").convert_alpha()
 falling_item_img = pygame.transform.scale(falling_item_img, (40, 40))  
-
-
-
-
+game_played = False
 
 # 상태 업데이트 함수
 def update_all_status():
@@ -347,6 +345,7 @@ while running:
                     score = 0
                     lives = 3
                     shooting_game_over = False
+                    game_played = False
 
             elif state == "running":
                 if event.key == pygame.K_SPACE and jump_count < MAX_JUMPS:
@@ -361,6 +360,7 @@ while running:
                     running_score = 0
                     running_lives = 3
                     running_game_over = False
+                    game_played = False
 
             elif state == "dodging" and event.key == pygame.K_r and dodging_game_over:
                 dodger_x = 0
@@ -369,6 +369,7 @@ while running:
                 dodger_lives = 3
                 falling_objects.clear()
                 dodging_game_over = False
+                game_played = False
 
     if state == "start":
         draw_start_screen(screen, font_start, start_select_idx)
@@ -389,23 +390,21 @@ while running:
                 tama_x = screen_rect.centerx - tama_width // 2
                 tama_y = screen_rect.centery - tama_height // 2
                 tama_initialized = True
+               
             if not tilt_reacted and GPIO.input(TILT_PIN) == GPIO.LOW:
                 tilt_reacted = True
                 tilt_stage = 0
                 tilt_timer = pygame.time.get_ticks()
-            if not tilt_reacted and GPIO.input(TILT_PIN) == GPIO.LOW:
-                tilt_reacted = True
-                tilt_stage = 0
-                tilt_timer = pygame.time.get_ticks()
+                status["mood"] = max(0, status["mood"] - 5)
 
             if tilt_reacted:
                 now = pygame.time.get_ticks()
 
                 if tilt_stage == 0:
-                    # 1단계: 기존 이미지 안 보이고 회전된 이미지만
-                    rotated_img = pygame.transform.rotate(img_scaled, 90)
-                    screen.blit(rotated_img, (tama_x, tama_y))
-                    if now - tilt_timer > 800:
+                    shake_offset = math.sin(pygame.time.get_ticks() * 0.02) * 5
+                    screen.blit(img_scaled, (tama_x + shake_offset, tama_y))
+                   
+                    if now - tilt_timer > 1000:
                         tilt_stage = 1
                         tilt_timer = now
 
@@ -498,11 +497,12 @@ while running:
 
     update_all_status()
    
-    temp, humid = read_temperature_humidity()
-    if temp is not None and humid is not None:
-        update_mood(status, temp, humid)
-        draw_temp_humid_bar(temp, humid)
-        print(f"temp: {temp}C, humid: {humid}%, mood: {status['mood']}")
+    if state == "main":
+        temp, humid = read_temperature_humidity()
+        if temp is not None and humid is not None:
+            update_mood(status, temp, humid)
+            draw_temp_humid_bar(temp, humid)
+            print(f"temp: {temp}C, humid: {humid}%, mood: {status['mood']}")
 
     if food:
         (fx, fy), _ = food
@@ -518,7 +518,7 @@ while running:
     if eating and pygame.time.get_ticks() - eat_timer > 300:
         eating = False
        
-    if state == "main":
+    if state == "main" and not tilt_reacted:
         if not rest_mode:
             if keys[pygame.K_LEFT]: tama_x -= tama_speed
             if keys[pygame.K_RIGHT]: tama_x += tama_speed
@@ -527,8 +527,8 @@ while running:
            
         tama_x = max(screen_rect.left, min(tama_x, screen_rect.right - tama_width))
         tama_y = max(screen_rect.top, min(tama_y, screen_rect.bottom - tama_height))
-
-        screen.blit(img_scaled, (tama_x, tama_y))
+        if not tilt_reacted:
+            screen.blit(img_scaled, (tama_x, tama_y))
 
     if rest_mode:
         rest(status)
@@ -539,6 +539,14 @@ while running:
         overlay.set_alpha(100)
         overlay.fill((100, 100, 100))
         screen.blit(overlay, (screen_rect.left, screen_rect.top))
+   
+    if state in ["shooting", "running", "dodging"]:
+        if not game_played:
+            if shooting_game_over or running_game_over or dodging_game_over:
+                status["mood"] = min(100, status["mood"] + 10)
+                status["fatigue"] = min(100, status["fatigue"] + 15)
+                game_played = True
+                print("mood +10 fatigue +15")
 
     pygame.display.flip()
     clock.tick(60)
