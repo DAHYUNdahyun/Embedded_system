@@ -79,6 +79,7 @@ tama_speed = 5
 sleeping = False
 sleep_detected = False
 melody_played = False
+show_manual_modal = False
 
 # 위치 계산
 egg_w, egg_h = 500, 580
@@ -171,6 +172,35 @@ def draw_status_bar(label, value, x, y, color):
     pygame.draw.rect(screen, GRAY, (x, y, 200, 16))
     pygame.draw.rect(screen, color, (x, y, 200 * value // 100, 16))
     screen.blit(font.render(f"{label}: {int(value)}", True, BLACK), (x, y - 22))
+    
+def draw_manual_modal():
+    modal_w, modal_h = 600, 400
+    modal_x = (WIDTH - modal_w) // 2
+    modal_y = (HEIGHT - modal_h) // 2
+    pygame.draw.rect(screen, WHITE, (modal_x, modal_y, modal_w, modal_h))
+    pygame.draw.rect(screen, BLACK, (modal_x, modal_y, modal_w, modal_h), 3)
+
+    lines = [
+        "💡 상태바 설명 💡",
+        "- 기분: 온도/습도에 따라 변화해요.",
+        "- 배고픔: 음식 먹이면 올라가요.",
+        "- 피로도: 휴식을 통해 회복돼요.",
+        "- 생명력: 피로와 배고픔이 영향을 줘요.",
+        "- 진화: 시간이 지나면 자라나요!"
+    ]
+
+    for i, line in enumerate(lines):
+        text = font.render(line, True, BLACK)
+        screen.blit(text, (modal_x + 30, modal_y + 40 + i * 40))
+
+    # 닫기 버튼
+    close_btn = pygame.Rect(modal_x + modal_w - 40, modal_y + 10, 30, 30)
+    pygame.draw.rect(screen, GRAY, close_btn)
+    pygame.draw.rect(screen, BLACK, close_btn, 2)
+    close_text = font.render("X", True, BLACK)
+    screen.blit(close_text, (close_btn.x + 5, close_btn.y))
+    return close_btn
+
 
 def draw_shell_ui(keys):
     left_buttons = []
@@ -205,8 +235,13 @@ def draw_shell_ui(keys):
         ("생명력", "health", RED), ("진화", "evolution", GREEN)
     ]):
         draw_status_bar(label, status[key], sx, sy + i * 45, color)
+        
+    manual_img = pygame.image.load("assets/manual.png").convert_alpha()
+    manual_img = pygame.transform.scale(manual_img, (40, 40))
+    manual_rect = screen.blit(manual_img, (WIDTH - 60, 60))  # 위치 조절 가능
 
-    return screen_rect, left_buttons
+
+    return screen_rect, left_buttons, manual_rect
 
 # 음식 이미지 로드
 def load_food_images():
@@ -356,6 +391,16 @@ while running:
                 for i, rect in enumerate(menu_rects):
                     if rect.collidepoint(mx, my):
                         state = ["shooting", "running", "dodging"][i]
+                        
+            if show_manual_modal:
+                close_btn = draw_manual_modal()
+                if close_btn.collidepoint((mx, my)):
+                    show_manual_modal = False
+            else:
+                if manual_rect.collidepoint((mx, my)):
+                    show_manual_modal = True
+
+
 
         elif event.type == pygame.KEYDOWN:
             if state == "main" and event.key == pygame.K_SPACE:
@@ -413,7 +458,7 @@ while running:
         draw_hello_screen(screen, font_start, nickname)
 
     elif state == "main":
-            screen_rect, left_buttons = draw_shell_ui(keys)
+            screen_rect, left_buttons, manual_rect = draw_shell_ui(keys)
             
             if not tama_initialized:
                 tama_x = screen_rect.centerx - tama_width // 2
@@ -618,6 +663,10 @@ while running:
             dodging_game_played = True
             prev_dodging_over = True
             print("mood +10 fatigue +15")
+
+    if show_manual_modal:
+        draw_manual_modal()
+
 
     pygame.display.flip()
     clock.tick(60)
