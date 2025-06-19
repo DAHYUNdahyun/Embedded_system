@@ -21,9 +21,9 @@ def draw_text_center(screen, text, y, color=BLACK, font_obj=None):
 def draw_start_screen(screen, font_obj, start_select_idx):
     screen.fill(BG_PINK)
     screen_width = screen.get_width()
-    offset_y = 150  # 전체 요소들을 아래로 내리는 오프셋
+    offset_y = 100  # 전체 요소들을 아래로 내리는 오프셋
 
-    draw_text_center(screen, "Welcome to Tamagotchi!", 100 + offset_y, RED, font_obj=font_obj)
+    draw_text_center(screen, "다마고치 친구들", 100 + offset_y, RED, font_obj=font_obj)
 
     start_rect = pygame.Rect(screen_width // 2 - 120, 220 + offset_y, 240, 50)
     instr_rect = pygame.Rect(screen_width // 2 - 120, 290 + offset_y, 240, 50)
@@ -35,8 +35,8 @@ def draw_start_screen(screen, font_obj, start_select_idx):
         pygame.draw.rect(screen, GRAY, start_rect, border_radius=8)
         pygame.draw.rect(screen, BLUE, instr_rect, border_radius=8)
 
-    draw_text_center(screen, "Start Game", 233 + offset_y, WHITE if start_select_idx == 0 else BLACK, font_obj=font_obj)
-    draw_text_center(screen, "Instructions", 303 + offset_y, WHITE if start_select_idx == 1 else BLACK, font_obj=font_obj)
+    draw_text_center(screen, "다마고치 키우기", 233 + offset_y, WHITE if start_select_idx == 0 else BLACK, font_obj=font_obj)
+    draw_text_center(screen, "설명", 303 + offset_y, WHITE if start_select_idx == 1 else BLACK, font_obj=font_obj)
 
 def draw_instruction_screen(screen, font_obj):
     screen.fill(WHITE)
@@ -94,7 +94,7 @@ def draw_virtual_keyboard(screen, font_obj, vkeys, vk_row, vk_col):
 def draw_nickname_screen(screen, font_obj, nickname, vkeys, vk_row, vk_col):
     screen.fill(BG_PINK)
     screen_width = screen.get_width()
-    draw_text_center(screen, "Enter your nickname:", 80, font_obj=font_obj)
+    draw_text_center(screen, "닉네임을 입력하세요 : ", 80, font_obj=font_obj)
 
     input_box = pygame.Rect(screen_width // 2 - 200, 160, 400, 60)  # 아래로 내림
     pygame.draw.rect(screen, WHITE, input_box, border_radius=8)
@@ -110,5 +110,5 @@ def draw_nickname_screen(screen, font_obj, nickname, vkeys, vk_row, vk_col):
 def draw_hello_screen(screen, font_obj, nickname):
     screen.fill(WHITE)
     screen_height = screen.get_height()
-    draw_text_center(screen, f"Hello {nickname}!", screen_height // 2 - 20, font_obj=font_obj)
-    draw_text_center(screen, "Press any key to start", screen_height // 2 + 20, font_obj=font_obj)
+    draw_text_center(screen, f"안녕 {nickname}!", screen_height // 2 - 20, font_obj=font_obj)
+    draw_text_center(screen, "아무 키나 누르면 시작합니다.", screen_height // 2 + 20, font_obj=font_obj)

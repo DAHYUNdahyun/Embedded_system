@@ -2,9 +2,11 @@ import pygame
 import sys
 import random
 import board
-import adafruit_dht
+#import adafruit_dht
 import math
-import RPi.GPIO as GPIO
+import os
+import json
+#import RPi.GPIO as GPIO
 from status.base_status import init_status
 from status.mood import update_mood
 from status.hunger import update_hunger, feed
@@ -27,19 +29,25 @@ pygame.display.set_caption("Tamagotchi Style UI")
 clock = pygame.time.Clock()
 load_heart_images()
 
-dhtDevice = adafruit_dht.DHT11(board.D17)
+SAVE_FOLDER = "save_data"
+os.makedirs(SAVE_FOLDER, exist_ok=True)
 
+# 온습도 센서
+#dhtDevice = adafruit_dht.DHT11(board.D17)
+
+# 기울기 센서
 tilt_reacted = False
 tilt_stage = 0
 tilt_timer = 0
 TILT_PIN = 27
-GPIO.setmode(GPIO.BCM)
-GPIO.setup(TILT_PIN, GPIO.IN, pull_up_down=GPIO.PUD_UP)
+# GPIO.setmode(GPIO.BCM)
+# GPIO.setup(TILT_PIN, GPIO.IN, pull_up_down=GPIO.PUD_UP)
 
 # 전역 상수
 WHITE, BLACK, YELLOW, PINK, BLUE, RED, GRAY = (255,255,255), (0,0,0), (255,230,0), (255,100,180), (0,180,255), (255,0,0), (200,200,200)
 BG_PINK, GREEN = (255,200,220), (0,200,0)
 font = pygame.font.Font("assets/fonts/DungGeunMo.ttf", 24)
+font_small = pygame.font.Font("assets/fonts/DungGeunMo.ttf", 18)
 rest_text_list = ["휴 식 중", "휴 식 중 .", "휴 식 중 . .", "휴 식 중 . . ."]
 
 # 이미지 정보
@@ -77,7 +85,6 @@ tama_x = egg_center_x - tama_width // 2
 tama_y = egg_center_y - tama_height // 2
 
 # 시작화면
-font_start = pygame.font.SysFont("Arial", 24, bold=True)
 vkeys = [['A','B','C','D','E','F','G','H','I','J'], ['K','L','M','N','O','P','Q','R','S','T'], ['U','V','W','X','Y','Z','SPACE','DEL','ENTER']]
 vk_row, vk_col = 0, 0
 nickname = ""
@@ -114,6 +121,8 @@ dodging_game_played = False
 prev_shooting_over = False
 prev_running_over = False
 prev_dodging_over = False
+intro_timer = 0           # 게임 설명 시작 시간
+selected_game = None      # 선택한 게임 이름 저장
 
 # 상태 업데이트 함수
 def update_all_status():
@@ -122,6 +131,21 @@ def update_all_status():
     check_sleep_restore(status)
     update_health(status)
     update_evolution(status)
+
+def save_status(nickname, status):
+    filepath = os.path.join(SAVE_FOLDER, f"{nickname}.json")
+    with open(filepath, "w") as f:
+        json.dump(status, f)
+    print(f"[저장됨] {filepath}")
+
+def load_status(nickname):
+    filepath = os.path.join(SAVE_FOLDER, f"{nickname}.json")
+    if os.path.exists(filepath):
+        with open(filepath, "r") as f:
+            return json.load(f)
+    else:
+        from status.base_status import init_status
+        return init_status()
 
 def spawn_food(screen_rect):
     margin = 60
@@ -285,7 +309,7 @@ while running:
 
         elif state == "nickname_done":
             if event.type == pygame.KEYDOWN:
-                # 아무 키나 누르면 게임 시작
+                status = load_status(nickname)
                 state = "main"
        
         elif event.type == pygame.MOUSEBUTTONDOWN:
@@ -334,7 +358,9 @@ while running:
             if state == "game_select":
                 for i, rect in enumerate(menu_rects):
                     if rect.collidepoint(mx, my):
-                        state = ["shooting", "running", "dodging"][i]
+                        selected_game = ["shooting", "running", "dodging"][i]
+                        state = selected_game + "_intro"
+                        intro_timer = pygame.time.get_ticks()
 
         elif event.type == pygame.KEYDOWN:
             if state == "main" and event.key == pygame.K_SPACE:
@@ -380,16 +406,16 @@ while running:
                 prev_dodging_over = False
 
     if state == "start":
-        draw_start_screen(screen, font_start, start_select_idx)
+        draw_start_screen(screen, font, start_select_idx)
 
     elif state == "instruction":
-        draw_instruction_screen(screen, font_start)
+        draw_instruction_screen(screen, font)
 
     elif state == "nickname":
-        draw_nickname_screen(screen, font_start, nickname, vkeys, vk_row, vk_col)
+        draw_nickname_screen(screen, font, nickname, vkeys, vk_row, vk_col)
 
     elif state == "nickname_done":
-        draw_hello_screen(screen, font_start, nickname)
+        draw_hello_screen(screen, font, nickname)
 
     elif state == "main":
             screen_rect, left_buttons = draw_shell_ui(keys)
@@ -399,11 +425,11 @@ while running:
                 tama_y = screen_rect.centery - tama_height // 2
                 tama_initialized = True
                
-            if not tilt_reacted and GPIO.input(TILT_PIN) == GPIO.LOW:
-                tilt_reacted = True
-                tilt_stage = 0
-                tilt_timer = pygame.time.get_ticks()
-                status["mood"] = max(0, status["mood"] - 5)
+            # if not tilt_reacted and GPIO.input(TILT_PIN) == GPIO.LOW:
+            #     tilt_reacted = True
+            #     tilt_stage = 0
+            #     tilt_timer = pygame.time.get_ticks()
+            #     status["mood"] = max(0, status["mood"] - 5)
 
             if tilt_reacted:
                 now = pygame.time.get_ticks()
@@ -479,7 +505,51 @@ while running:
             pygame.draw.rect(screen, BLACK, exit_button, 2, border_radius=8)
             text = font.render("←", True, BLACK)
             screen.blit(text, (exit_button.x + 10, exit_button.y + 5))
+    elif state.endswith("_intro"):
+            screen_rect, _ = draw_shell_ui(keys)
 
+            # 어떤 게임 설명인지 판단
+            game_name = state.replace("_intro", "")
+            bg_map = {
+                "shooting": shooting_bg,
+                "running": running_bg,
+                "dodging": dodging_bg
+            }
+            instructions = {
+                "shooting": ["스페이스바로 총알을 발사하세요!", "적을 맞히면 점수가 올라갑니다!"],
+                "running": ["스페이스바로 점프하세요!", "장애물을 피하고 코인을 모으세요!"],
+                "dodging": ["좌우 방향키로 움직이세요!", "떨어지는 물체를 피하세요!"]
+            }
+
+            # 배경 이미지 출력
+            bg = bg_map.get(game_name)
+            if bg:
+                screen.blit(bg, screen_rect)
+
+            # 설명 문구 줄 단위 처리
+            lines = instructions.get(game_name, ["게임 설명이 없습니다"])
+            line_height = font_small.get_height()
+            box_width = max(font_small.size(line)[0] for line in lines) + 40
+            box_height = len(lines) * line_height + 40
+            box_x = screen_rect.centerx - box_width // 2
+            box_y = screen_rect.centery - box_height // 2
+
+            # 반투명 배경 박스 그리기
+            box_surface = pygame.Surface((box_width, box_height))
+            box_surface.set_alpha(180)
+            box_surface.fill((255, 255, 255))
+            screen.blit(box_surface, (box_x, box_y))
+
+            # 텍스트 줄 단위 출력
+            for i, line in enumerate(lines):
+                rendered = font_small.render(line, True, BLACK)
+                text_x = screen_rect.centerx - rendered.get_width() // 2
+                text_y = box_y + 20 + i * line_height
+                screen.blit(rendered, (text_x, text_y))
+
+            # 3초 후 게임 시작
+            if pygame.time.get_ticks() - intro_timer > 3000:
+                state = game_name
        
     if state == "shooting":
         if keys[pygame.K_LEFT] and player_x - tama_w // 2 > screen_rect.left:
@@ -570,5 +640,6 @@ while running:
     pygame.display.flip()
     clock.tick(60)
 
+save_status(nickname, status)
 pygame.quit()
 sys.exit()

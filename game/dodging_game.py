@@ -54,7 +54,7 @@ def draw_dodging_game(screen, screen_rect, background_img, tama_img_game, fallin
     if dodging_game_over:
         over1 = font.render("Game Over!", True, RED)
         screen.blit(over1, (screen_rect.centerx - over1.get_width() // 2, screen_rect.centery - 30))
-        over2 = font.render("Press R to Restart", True, RED)
+        over2 = font.render("R을 눌러 재시작하세요", True, RED)
         screen.blit(over2, (screen_rect.centerx - over2.get_width() // 2, screen_rect.centery - 5))
         
     return (
