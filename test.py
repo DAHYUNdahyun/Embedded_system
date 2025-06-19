@@ -2,10 +2,10 @@ import pygame
 import sys
 import random
 import time
-import board
-import adafruit_dht
+# import board
+# import adafruit_dht
 import math
-import RPi.GPIO as GPIO
+# import RPi.GPIO as GPIO
 from status.base_status import init_status
 from status.mood import update_mood
 from status.hunger import update_hunger, feed
@@ -28,23 +28,23 @@ pygame.display.set_caption("Tamagotchi Style UI")
 clock = pygame.time.Clock()
 load_heart_images()
 
-dhtDevice = adafruit_dht.DHT11(board.D17)
+# dhtDevice = adafruit_dht.DHT11(board.D17)
 
-tilt_reacted = False
-tilt_stage = 0
-tilt_timer = 0
-TILT_PIN = 27
-GPIO.setmode(GPIO.BCM)
-GPIO.setup(TILT_PIN, GPIO.IN, pull_up_down=GPIO.PUD_UP)
+# tilt_reacted = False
+# tilt_stage = 0
+# tilt_timer = 0
+# TILT_PIN = 27
+# GPIO.setmode(GPIO.BCM)
+# GPIO.setup(TILT_PIN, GPIO.IN, pull_up_down=GPIO.PUD_UP)
 
-LIGHT_PIN = 22
-GPIO.setup(LIGHT_PIN, GPIO.IN)
+# LIGHT_PIN = 22
+# GPIO.setup(LIGHT_PIN, GPIO.IN)
 
-BUZZER_PIN = 17
-GPIO.setmode(GPIO.BCM)
-GPIO.setup(BUZZER_PIN, GPIO.OUT)
-buzzer_pwm = GPIO.PWM(BUZZER_PIN, 440)  # 초기 주파수는 440Hz (A음)
-buzzer_pwm.start(0)  # 일단 멈춘 상태로 시작
+# BUZZER_PIN = 18
+# GPIO.setmode(GPIO.BCM)
+# GPIO.setup(BUZZER_PIN, GPIO.OUT)
+# buzzer_pwm = GPIO.PWM(BUZZER_PIN, 440)  # 초기 주파수는 440Hz (A음)
+# buzzer_pwm.start(0)  # 일단 멈춘 상태로 시작
 
 # 전역 상수
 WHITE, BLACK, YELLOW, PINK, BLUE, RED, GRAY = (255,255,255), (0,0,0), (255,230,0), (255,100,180), (0,180,255), (255,0,0), (200,200,200)
@@ -123,6 +123,8 @@ dodging_bg = pygame.transform.scale(dodging_bg, (320, 350))
 falling_item_img = pygame.image.load("assets/game/falling_item.png").convert_alpha()
 obstacle_img = pygame.image.load("assets/game/obstacle.png").convert_alpha()
 obstacle_img = pygame.transform.scale(obstacle_img, (40, 30))  # 기존 장애물과 같은 크기
+status_bg = pygame.image.load("assets/status_background.png").convert_alpha()
+status_bg = pygame.transform.scale(status_bg, (300, 300))  # 상태바 크기에 맞게 조정
 
 shooting_game_played = False
 running_game_played = False
@@ -131,13 +133,60 @@ prev_shooting_over = False
 prev_running_over = False 
 prev_dodging_over = False
 
-def play_melody():
-    melody = [262, 294, 330, 392, 440, 494, 523]  # 도, 레, 미, 솔, 라, 시, 도
-    buzzer_pwm.start(50)  # 50% Duty cycle
-    for freq in melody:
-        buzzer_pwm.ChangeFrequency(freq)
-        time.sleep(0.2)
-    buzzer_pwm.stop()
+show_manual_modal = False
+current_manual_page = 0  # 현재 페이지 인덱스
+
+manual_pages = [
+    [  # 0번 페이지 - 전체 요약
+        "💡 상태바 설명 💡",
+        "- 기분: 온도/습도에 따라 변화해요.",
+        "- 배고픔: 음식 먹이면 올라가요.",
+        "- 피로도: 휴식을 통해 회복돼요.",
+        "- 생명력: 피로와 배고픔이 영향을 줘요.",
+        "- 진화: 시간이 지나면 자라나요!"
+    ],
+    [  # 1번 페이지 - 기분 설명
+        " 기분 설명",
+        "- 다마고치는 게임을 좋아해요!",
+        "- 기분은 온도와 습도에 따라 변해요.",
+        "- 10 이하 or 25도 이상이면 감소해요.",
+        "- 습도가 80% 이상이면 기분이 나빠져요.",
+        "- 쾌적한 환경(20~26도, 습도 40~60%) 유지하세요!",
+        
+    ],
+    [  # 2번 페이지 - 배고픔 설명
+        " 배고픔 설명",
+        "- 시간이 지나면 배고픔이 점점 감소해요.",
+        "- 음식 아이템을 먹이면 회복돼요.",
+        "- 자고 일어나면 배가 고파져요."
+    ],
+    [  # 3번 페이지 - 피로도 설명
+        " 피로도 설명",
+        "- 게임을 하면 피로해져요.",
+        "- 휴식 모드를 통해 회복할 수 있어요.",
+        "- 수면은 피로도를 빠르게 회복시켜요."
+    ],
+    [  # 4번 페이지 - 생명력 설명
+        " 생명력 설명",
+        "- 기분, 배고픔, 피로도가 낮으면 감소해요.",
+        "- 상태 관리를 잘해서 생명력을 지켜주세요!"
+    ],
+    [  # 5번 페이지 - 진화 설명
+        " 진화 설명",
+        "- 기분, 배고픔, 피로도 관리가 중요해요.",
+        "- 진화는 총 4단계로 나뉘어요.",
+        "- 진화가 완료되면 새로운 모습이 나타나요!"
+    ]
+]
+
+
+# def play_melody():
+#     melody = [262, 294, 330, 392, 440, 494, 523]  # 도, 레, 미, 솔, 라, 시, 도
+#     buzzer_pwm.start(50)  # 50% Duty cycle
+#     for freq in melody:
+#         buzzer_pwm.ChangeFrequency(freq)
+#         time.sleep(0.2)
+#     buzzer_pwm.stop()
 
 # 상태 업데이트 함수
 def update_all_status():
@@ -154,54 +203,84 @@ def spawn_food(screen_rect):
     image = random.choice(food_images)
     return (x, y), image
     
-def read_temperature_humidity():
-    try:
-        temp = dhtDevice.temperature
-        humid = dhtDevice.humidity
-        return temp, humid
-    except Exception as e:
-        print("can't read", e)
-        return None, None
+# def read_temperature_humidity():
+#     try:
+#         temp = dhtDevice.temperature
+#         humid = dhtDevice.humidity
+#         return temp, humid
+#     except Exception as e:
+#         print("can't read", e)
+#         return None, None
         
-def draw_temp_humid_bar(temp, humid):
-    text = f"temperature: {temp}°C / humidity: {humid}%"
-    rendered = font.render(text, True, BLACK)
-    text_rect = rendered.get_rect()
-    text_rect.topright = (WIDTH - 20, 10)
-    screen.blit(rendered, text_rect)
+# def draw_temp_humid_bar(temp, humid):
+#     text = f"temperature: {temp}°C / humidity: {humid}%"
+#     rendered = font.render(text, True, BLACK)
+#     text_rect = rendered.get_rect()
+#     text_rect.topright = (WIDTH - 20, 10)
+#     screen.blit(rendered, text_rect)
 
 def draw_status_bar(label, value, x, y, color):
-    pygame.draw.rect(screen, GRAY, (x, y, 200, 16))
-    pygame.draw.rect(screen, color, (x, y, 200 * value // 100, 16))
-    screen.blit(font.render(f"{label}: {int(value)}", True, BLACK), (x, y - 22))
+    label_surface = font.render(f"{label}: {int(value)}", True, BLACK)
+    screen.blit(label_surface, (x, y))
+
+    bar_x = x  # 텍스트와 동일한 x 좌표
+    bar_y = y + label_surface.get_height() + 5  # 텍스트 아래 여백 5px
+
+    bar_width = 200
+    bar_height = 16
+
+    pygame.draw.rect(screen, GRAY, (bar_x, bar_y, bar_width, bar_height), border_radius=5)
+    pygame.draw.rect(screen, color, (bar_x, bar_y, bar_width * value // 100, bar_height), border_radius=5)
+    pygame.draw.rect(screen, BLACK, (bar_x, bar_y, bar_width, bar_height), 2, border_radius=5)
+
+
     
 def draw_manual_modal():
+    global current_manual_page
     modal_w, modal_h = 600, 400
     modal_x = (WIDTH - modal_w) // 2
     modal_y = (HEIGHT - modal_h) // 2
-    pygame.draw.rect(screen, WHITE, (modal_x, modal_y, modal_w, modal_h))
-    pygame.draw.rect(screen, BLACK, (modal_x, modal_y, modal_w, modal_h), 3)
 
-    lines = [
-        "💡 상태바 설명 💡",
-        "- 기분: 온도/습도에 따라 변화해요.",
-        "- 배고픔: 음식 먹이면 올라가요.",
-        "- 피로도: 휴식을 통해 회복돼요.",
-        "- 생명력: 피로와 배고픔이 영향을 줘요.",
-        "- 진화: 시간이 지나면 자라나요!"
-    ]
+    # 🎨 색상 정의
+    MODAL_BG = (245, 245, 255)       # 연한 파스텔 배경
+    MODAL_BORDER = (120, 120, 180)   # 테두리 보라
+    TEXT_COLOR = (40, 40, 90)        # 차분한 남색
 
+    # 🌕 모달 박스
+    pygame.draw.rect(screen, MODAL_BG, (modal_x, modal_y, modal_w, modal_h), border_radius=15)
+    pygame.draw.rect(screen, MODAL_BORDER, (modal_x, modal_y, modal_w, modal_h), 3, border_radius=15)
+
+    # 📝 텍스트 출력
+    lines = manual_pages[current_manual_page]
     for i, line in enumerate(lines):
-        text = font.render(line, True, BLACK)
+        shadow = font.render(line, True, (200, 200, 230))  # 약간 연한 그림자
+        text = font.render(line, True, TEXT_COLOR)
+        screen.blit(shadow, (modal_x + 31, modal_y + 41 + i * 40))
         screen.blit(text, (modal_x + 30, modal_y + 40 + i * 40))
 
-    # 닫기 버튼
-    close_btn = pygame.Rect(modal_x + modal_w - 40, modal_y + 10, 30, 30)
-    pygame.draw.rect(screen, GRAY, close_btn)
-    pygame.draw.rect(screen, BLACK, close_btn, 2)
-    close_text = font.render("X", True, BLACK)
-    screen.blit(close_text, (close_btn.x + 5, close_btn.y))
-    return close_btn
+    # ❌ 닫기 버튼 (동그라미)
+    close_btn = pygame.Rect(modal_x + modal_w - 45, modal_y + 15, 25, 25)
+    pygame.draw.ellipse(screen, (255, 100, 100), close_btn)
+    pygame.draw.ellipse(screen, (180, 0, 0), close_btn, 2)
+    x_text = font.render("X", True, (255, 255, 255))
+    screen.blit(x_text, (close_btn.x + 5, close_btn.y))
+
+    # ◀ ▶ 페이지 넘김 버튼
+    left_btn = pygame.Rect(modal_x + 20, modal_y + modal_h - 50, 30, 30)
+    right_btn = pygame.Rect(modal_x + modal_w - 50, modal_y + modal_h - 50, 30, 30)
+
+    pygame.draw.ellipse(screen, (220, 220, 255), left_btn)
+    pygame.draw.ellipse(screen, (120, 120, 200), left_btn, 2)
+
+    pygame.draw.ellipse(screen, (220, 220, 255), right_btn)
+    pygame.draw.ellipse(screen, (120, 120, 200), right_btn, 2)
+
+    lt = font.render("<", True, (80, 80, 120))
+    rt = font.render(">", True, (80, 80, 120))
+    screen.blit(lt, (left_btn.x + 8, left_btn.y + 3))
+    screen.blit(rt, (right_btn.x + 8, right_btn.y + 3))
+
+    return close_btn, left_btn, right_btn
 
 
 def draw_shell_ui(keys):
@@ -230,20 +309,46 @@ def draw_shell_ui(keys):
     base_x, base_y = egg_center_x + 90, egg_y + egg_h - 80
     for dx, dy, key in [(0, -22, pygame.K_UP), (0, 22, pygame.K_DOWN), (-22, 0, pygame.K_LEFT), (22, 0, pygame.K_RIGHT)]:
         pygame.draw.rect(screen, BLACK if keys[key] else GRAY, (base_x + dx, base_y + dy, 12, 12))
+        
+    status_bg_x = egg_x + egg_w + 60
+    status_bg_y = egg_y + 110
+    
+    manual_box_w = status_bg.get_width()
+    manual_box_h = 60
+    manual_box_x = status_bg_x
+    manual_box_y = status_bg_y - manual_box_h - 20  # 상태바 위에 여백 20
 
-    sx, sy = egg_x + egg_w + 40, egg_y + 100
+    manual_box_img = pygame.image.load("assets/manual_box_background.png").convert_alpha()
+    manual_box_img = pygame.transform.scale(manual_box_img, (300, 80))
+    screen.blit(manual_box_img, (manual_box_x, manual_box_y))
+
+    # 책 아이콘 + 텍스트
+    book_img = pygame.image.load("assets/manual.png").convert_alpha()
+    book_img = pygame.transform.scale(book_img, (32, 32))
+    screen.blit(book_img, (manual_box_x + 15, manual_box_y + (manual_box_h - 32) // 2))
+
+    manual_text = font.render("메뉴얼", True, BLACK)
+    screen.blit(manual_text, (manual_box_x + 60, manual_box_y + (manual_box_h - manual_text.get_height()) // 2))
+
+    # 클릭 영역 저장
+    manual_box_rect = pygame.Rect(manual_box_x, manual_box_y, manual_box_w, manual_box_h)
+    screen.blit(status_bg, (status_bg_x, status_bg_y))
+
+    # 상태바 간 간격과 여백 설정
+    bar_spacing = 50
+    top_bottom_margin = 20
+    side_margin = 30
+
+    bar_start_y = status_bg_y + top_bottom_margin
+    bar_x = status_bg_x + side_margin  # 좌측 여백 포함
+
     for i, (label, key, color) in enumerate([
         ("기분", "mood", PINK), ("체력", "fatigue", BLUE), ("배고픔", "hunger", YELLOW),
         ("생명력", "health", RED), ("진화", "evolution", GREEN)
     ]):
-        draw_status_bar(label, status[key], sx, sy + i * 45, color)
-        
-    manual_img = pygame.image.load("assets/manual.png").convert_alpha()
-    manual_img = pygame.transform.scale(manual_img, (40, 40))
-    manual_rect = screen.blit(manual_img, (WIDTH - 60, 60))  # 위치 조절 가능
+        draw_status_bar(label, status[key], bar_x, bar_start_y + i * bar_spacing, color)
 
-
-    return screen_rect, left_buttons, manual_rect
+    return screen_rect, left_buttons, manual_box_rect
 
 # 음식 이미지 로드
 def load_food_images():
@@ -284,10 +389,13 @@ while running:
     game_ratio = game_width / iw
     img_scaled_game = pygame.transform.scale(image, (int(iw * game_ratio), int(ih * game_ratio)))
         
-    if state in ["main", "game_select", "shooting", "running", "dodging"]:
-        screen_rect, left_buttons = draw_shell_ui(keys)
+    if state == "main":
+        screen_rect, left_buttons, manual_box_rect = draw_shell_ui(keys)
+    elif state in ["game_select", "shooting", "running", "dodging"]:
+        screen_rect, left_buttons, _ = draw_shell_ui(keys)  # manual_rect 무시
     else:
         screen_rect, left_buttons = None, []
+
         
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
@@ -349,6 +457,21 @@ while running:
         elif event.type == pygame.MOUSEBUTTONDOWN:
             mx, my = pygame.mouse.get_pos()
             
+            # ① 매뉴얼 모달이 열려 있고 main 상태일 때: 페이지 넘김 또는 닫기
+            if state == "main" and show_manual_modal:
+                close_btn, left_btn, right_btn = draw_manual_modal()
+                if close_btn.collidepoint((mx, my)):
+                    show_manual_modal = False
+                elif left_btn.collidepoint((mx, my)) and current_manual_page > 0:
+                    current_manual_page -= 1
+                elif right_btn.collidepoint((mx, my)) and current_manual_page < len(manual_pages) - 1:
+                    current_manual_page += 1
+
+            # ② 매뉴얼 처음 열기
+            elif state == "main":
+                if manual_box_rect.collidepoint((mx, my)):
+                    show_manual_modal = True
+            
             if exit_button is not None and exit_button.collidepoint((mx, my)):
                 if state == "shooting":
                     bullets.clear()
@@ -394,13 +517,15 @@ while running:
                     if rect.collidepoint(mx, my):
                         state = ["shooting", "running", "dodging"][i]
                         
-            if show_manual_modal:
-                close_btn = draw_manual_modal()
-                if close_btn.collidepoint((mx, my)):
-                    show_manual_modal = False
-            else:
-                if manual_rect.collidepoint((mx, my)):
-                    show_manual_modal = True
+            # manual 버튼은 main 상태일 때만 처리
+            if state == "main":
+                if show_manual_modal:
+                    close_btn, left_btn, right_btn = draw_manual_modal()
+                    if close_btn.collidepoint((mx, my)):
+                        show_manual_modal = False
+                else:
+                    if manual_box_rect.collidepoint((mx, my)):
+                        show_manual_modal = True
 
 
 
@@ -460,46 +585,46 @@ while running:
         draw_hello_screen(screen, font_start, nickname)
 
     elif state == "main":
-            screen_rect, left_buttons, manual_rect = draw_shell_ui(keys)
+            screen_rect, left_buttons, manual_box_rect = draw_shell_ui(keys)
             
             if not tama_initialized:
                 tama_x = screen_rect.centerx - tama_width // 2
                 tama_y = screen_rect.centery - tama_height // 2
                 tama_initialized = True
                 
-            if not tilt_reacted and GPIO.input(TILT_PIN) == GPIO.LOW:
-                tilt_reacted = True
-                tilt_stage = 0
-                tilt_timer = pygame.time.get_ticks()
-                status["mood"] = max(0, status["mood"] - 5)
+            # if not tilt_reacted and GPIO.input(TILT_PIN) == GPIO.LOW:
+            #     tilt_reacted = True
+            #     tilt_stage = 0
+            #     tilt_timer = pygame.time.get_ticks()
+            #     status["mood"] = max(0, status["mood"] - 5)
 
-            if tilt_reacted:
-                now = pygame.time.get_ticks()
+            # if tilt_reacted:
+            #     now = pygame.time.get_ticks()
 
-                if tilt_stage == 0:
-                    shake_offset = math.sin(pygame.time.get_ticks() * 0.02) * 5
-                    screen.blit(img_scaled, (tama_x + shake_offset, tama_y))
+            #     if tilt_stage == 0:
+            #         shake_offset = math.sin(pygame.time.get_ticks() * 0.02) * 5
+            #         screen.blit(img_scaled, (tama_x + shake_offset, tama_y))
                     
-                    if now - tilt_timer > 1000:
-                        tilt_stage = 1
-                        tilt_timer = now
+            #         if now - tilt_timer > 1000:
+            #             tilt_stage = 1
+            #             tilt_timer = now
 
-                elif tilt_stage == 1:
-                    # 2단계: 진화단계에 맞는 dizzy 이미지 보여주기
-                    evo = get_evolution_stage(status["evolution"])
-                    dizzy_img = pygame.image.load(f"assets/tama{evo}_dizzy.png").convert_alpha()
-                    dizzy_scaled = pygame.transform.scale(dizzy_img, (tama_width, tama_height))
-                    screen.blit(dizzy_scaled, (tama_x, tama_y))
-                    dizzy_text = font.render("I'm dizzy...", True, BLACK)
-                    screen.blit(dizzy_text, (tama_x, tama_y - 30))
-                    if now - tilt_timer > 2000:
-                        tilt_reacted = False  # 원래 상태로 돌아감
+            #     elif tilt_stage == 1:
+            #         # 2단계: 진화단계에 맞는 dizzy 이미지 보여주기
+            #         evo = get_evolution_stage(status["evolution"])
+            #         dizzy_img = pygame.image.load(f"assets/tama{evo}_dizzy.png").convert_alpha()
+            #         dizzy_scaled = pygame.transform.scale(dizzy_img, (tama_width, tama_height))
+            #         screen.blit(dizzy_scaled, (tama_x, tama_y))
+            #         dizzy_text = font.render("I'm dizzy...", True, BLACK)
+            #         screen.blit(dizzy_text, (tama_x, tama_y - 30))
+            #         if now - tilt_timer > 2000:
+            #             tilt_reacted = False  # 원래 상태로 돌아감
 
-            else:
-                # tilt_reacted가 아닌 일반 상태일 때만 원래 이미지 그림
-                screen.blit(img_scaled, (tama_x, tama_y))
+            # else:
+            #     # tilt_reacted가 아닌 일반 상태일 때만 원래 이미지 그림
+            #     screen.blit(img_scaled, (tama_x, tama_y))
     elif state == "game_select":
-            screen_rect, left_buttons = draw_shell_ui(keys)
+            screen_rect, left_buttons, manual_box_rect = draw_shell_ui(keys)
             menu_rects = draw_game_select_menu(screen, screen_rect, font, (BLACK, GRAY))
     elif state == "shooting":
             screen_rect, _ = draw_shell_ui(keys)
@@ -519,7 +644,7 @@ while running:
             screen.blit(text, (exit_button.x + 10, exit_button.y + 5))
             
     elif state == "running":
-            screen_rect, _ = draw_shell_ui(keys)
+            screen_rect, _, manual_box_rect = draw_shell_ui(keys)
                         
             runner_y, is_jumping, jump_velocity, jump_count, obstacles, stars, obstacle_timer, running_score, running_lives, running_game_over = draw_running_game(
                 screen, screen_rect, running_bg, gravity, img_scaled_game, coin_img, obstacle_img, 80, font, (BLACK, YELLOW, RED),
@@ -573,30 +698,30 @@ while running:
 
     update_all_status()
     
-    if (status["mood"] >= 90 and status["hunger"] >= 90 and status["fatigue"] >= 90 and not melody_played):
-        play_melody()
-        melody_played = True
-    elif status["mood"] < 90 or status["hunger"] < 90 or status["fatigue"] < 90:
-        melody_played = False
+    # if (status["mood"] >= 90 and status["hunger"] >= 90 and status["fatigue"] >= 90 and not melody_played):
+    #     play_melody()
+    #     melody_played = True
+    # elif status["mood"] < 90 or status["hunger"] < 90 or status["fatigue"] < 90:
+    #     melody_played = False
         
-    if state == "main":
-        temp, humid = read_temperature_humidity()
-        if temp is not None and humid is not None:
-            update_mood(status, temp, humid)
-            draw_temp_humid_bar(temp, humid)
-            print(f"temp: {temp}C, humid: {humid}%, mood: {status['mood']}")
+    # if state == "main":
+    #     temp, humid = read_temperature_humidity()
+    #     if temp is not None and humid is not None:
+    #         update_mood(status, temp, humid)
+    #         draw_temp_humid_bar(temp, humid)
+    #         print(f"temp: {temp}C, humid: {humid}%, mood: {status['mood']}")
             
-        light_state = GPIO.input(LIGHT_PIN)
+    #     light_state = GPIO.input(LIGHT_PIN)
         
-        if light_state == GPIO.HIGH and not sleeping:
-            print("sleeping")
-            sleeping = True
-            start_sleep(status)
+    #     if light_state == GPIO.HIGH and not sleeping:
+    #         print("sleeping")
+    #         sleeping = True
+    #         start_sleep(status)
             
-        elif light_state == GPIO.LOW and sleeping:
-            print("not sleeping")
-            sleeping = False
-            status["last_sleep_time"] = None
+    #     elif light_state == GPIO.LOW and sleeping:
+    #         print("not sleeping")
+    #         sleeping = False
+    #         status["last_sleep_time"] = None
         
     if food:
         (fx, fy), _ = food
@@ -612,17 +737,17 @@ while running:
     if eating and pygame.time.get_ticks() - eat_timer > 300:
         eating = False
         
-    if state == "main" and not tilt_reacted:
-        if not rest_mode:
-            if keys[pygame.K_LEFT]: tama_x -= tama_speed
-            if keys[pygame.K_RIGHT]: tama_x += tama_speed
-            if keys[pygame.K_UP]: tama_y -= tama_speed
-            if keys[pygame.K_DOWN]: tama_y += tama_speed
+    # if state == "main" and not tilt_reacted:
+    #     if not rest_mode:
+    #         if keys[pygame.K_LEFT]: tama_x -= tama_speed
+    #         if keys[pygame.K_RIGHT]: tama_x += tama_speed
+    #         if keys[pygame.K_UP]: tama_y -= tama_speed
+    #         if keys[pygame.K_DOWN]: tama_y += tama_speed
             
-        tama_x = max(screen_rect.left, min(tama_x, screen_rect.right - tama_width))
-        tama_y = max(screen_rect.top, min(tama_y, screen_rect.bottom - tama_height))
-        if not tilt_reacted:
-            screen.blit(img_scaled, (tama_x, tama_y))
+    #     tama_x = max(screen_rect.left, min(tama_x, screen_rect.right - tama_width))
+    #     tama_y = max(screen_rect.top, min(tama_y, screen_rect.bottom - tama_height))
+    #     if not tilt_reacted:
+    #         screen.blit(img_scaled, (tama_x, tama_y))
 
     if rest_mode:
         rest(status)
@@ -673,8 +798,8 @@ while running:
     pygame.display.flip()
     clock.tick(60)
 
-buzzer_pwm.stop()
-GPIO.cleanup()
+# buzzer_pwm.stop()
+# GPIO.cleanup()
 
 pygame.quit()
 sys.exit()

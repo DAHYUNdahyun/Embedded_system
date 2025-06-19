@@ -5,13 +5,14 @@ import board
 import adafruit_dht
 import math
 import RPi.GPIO as GPIO
+import smbus
 from status.base_status import init_status
 from status.mood import update_mood
 from status.hunger import update_hunger, feed
 from status.fatigue import check_sleep_restore
 from status.health import update_health
 from status.evolution import update_evolution
-from status.actions import rest
+from status.actions import rest, start_sleep
 from game.game_select import draw_game_select_menu
 from game.shooting_game import draw_shooting_game
 from game.running_game import draw_running_game
@@ -35,6 +36,9 @@ tilt_timer = 0
 TILT_PIN = 27
 GPIO.setmode(GPIO.BCM)
 GPIO.setup(TILT_PIN, GPIO.IN, pull_up_down=GPIO.PUD_UP)
+
+LIGHT_PIN = 22
+GPIO.setup(LIGHT_PIN, GPIO.IN)
 
 # 전역 상수
 WHITE, BLACK, YELLOW, PINK, BLUE, RED, GRAY = (255,255,255), (0,0,0), (255,230,0), (255,100,180), (0,180,255), (255,0,0), (200,200,200)
@@ -66,6 +70,8 @@ menu_rects = []
 food, food_radius, eating = None, 10, False
 eat_timer, rest_text_index, rest_text_timer = 0, 0, 0
 tama_speed = 5
+sleeping = False
+sleep_detected = False
 
 # 위치 계산
 egg_w, egg_h = 500, 580
@@ -114,6 +120,30 @@ dodging_game_played = False
 prev_shooting_over = False
 prev_running_over = False
 prev_dodging_over = False
+
+TOUCH_KEY_MAP = {
+    1: "DOWN",     # 키 1
+    2: "RIGHT",    # 키 2
+    4: "UP",       # 키 3
+    8: "LEFT",     # 키 4
+    16: "A",       # 키 5
+    32: "B",       # 키 6
+    64: "C",       # 키 7
+    128: "D",      # 키 8
+}
+
+I2C_ADDR = 0x57
+bus = smbus.SMBus(1)
+
+def read_touch_keys():
+    try:
+        value = bus.read_byte(I2C_ADDR)
+        return value
+    except:
+        return 0
+
+def parse_keys(value):
+    return [name for bit, name in TOUCH_KEY_MAP.items() if value & bit]
 
 # 상태 업데이트 함수
 def update_all_status():
@@ -201,16 +231,23 @@ def load_food_images():
 
 food_images = load_food_images()
 
+clock = pygame.time.Clock()
+lt = 0
+
+
 # 메인 루프
 running = True
 while running:
     screen.fill(WHITE)
-    keys = pygame.key.get_pressed()
 
+    val = read_touch_keys()
+    keys = parse_keys(val)
+    kys = pygame.key.get_pressed()
+    nk = parse_keys(val & ~lt)
    
     # 1. 진화 단계 및 감정에 맞는 이미지 선택
     evo = get_evolution_stage(status["evolution"])
-    emo = "rest" if rest_mode else "eat" if eating else "sad" if status["mood"] < 50 else "joy"
+    emo = "zz" if sleeping else ("rest" if rest_mode else "eat" if eating else "sad" if status["mood"] < 50 else "joy")
     image = tama_images[evo][emo]
 
     # 2. 스케일 비율 적용
@@ -227,157 +264,161 @@ while running:
     img_scaled_game = pygame.transform.scale(image, (int(iw * game_ratio), int(ih * game_ratio)))
        
     if state in ["main", "game_select", "shooting", "running", "dodging"]:
-        screen_rect, left_buttons = draw_shell_ui(keys)
+        screen_rect, left_buttons = draw_shell_ui(kys)
     else:
         screen_rect, left_buttons = None, []
        
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
             running = False
-        if state == "start":
-            if event.type == pygame.KEYDOWN:
-                if event.key == pygame.K_UP or event.key == pygame.K_DOWN:
-                    start_select_idx = 1 - start_select_idx  # 0↔1 토글
-                elif event.key == pygame.K_SPACE or event.key == pygame.K_RETURN:
-                    if start_select_idx == 0:
-                        state = "nickname"
-                        nickname = ""
-                        vk_row, vk_col = 0, 0
-                    else:
-                        state = "instruction"
-                elif event.key == pygame.K_ESCAPE:
-                    running = False
 
-        elif state == "instruction":
-            if event.type == pygame.KEYDOWN:
-                state = "nickname"
-                nickname = ""
-                vk_row, vk_col = 0, 0
+    if state == "start":
+        if keys:
+            if "UP" in nk or "DOWN" in nk:
+            #if "UP" in keys or "DOWN" in keys:
+                start_select_idx = 1 - start_select_idx  # 0↔1 토글
+            elif "D" in keys or "C" in keys:    
+                if start_select_idx == 0:
+                    state = "nickname"
+                    nickname = ""
+                    vk_row, vk_col = 0, 0
+                else:
+                    state = "instruction"
+            elif "A" in keys:
+                running = False
 
-        elif state == "nickname":
-            if event.type == pygame.KEYDOWN:
-                if event.key == pygame.K_UP:
-                    vk_row = (vk_row - 1) % len(vkeys)
-                    if vk_col >= len(vkeys[vk_row]):
-                        vk_col = len(vkeys[vk_row]) - 1
-                elif event.key == pygame.K_DOWN:
-                    vk_row = (vk_row + 1) % len(vkeys)
-                    if vk_col >= len(vkeys[vk_row]):
-                        vk_col = len(vkeys[vk_row]) - 1
-                elif event.key == pygame.K_LEFT:
-                    vk_col = (vk_col - 1) % len(vkeys[vk_row])
-                elif event.key == pygame.K_RIGHT:
-                    vk_col = (vk_col + 1) % len(vkeys[vk_row])
-                elif event.key == pygame.K_SPACE or event.key == pygame.K_RETURN:
-                    key = vkeys[vk_row][vk_col]
-                    if key == "SPACE":
-                        nickname += " "
-                    elif key == "DEL":
-                        nickname = nickname[:-1]
-                    elif key == "ENTER":
-                        if len(nickname.strip()) > 0:
-                            state = "nickname_done"
-                    else:
-                        if len(nickname) < 12:
-                            nickname += key
-                elif event.key == pygame.K_BACKSPACE:
+    elif state == "instruction":
+        if keys:
+            state = "nickname"
+            nickname = ""
+            vk_row, vk_col = 0, 0
+
+    elif state == "nickname":
+        if keys:
+            if "UP" in nk:
+                vk_row = (vk_row - 1) % len(vkeys)
+                if vk_col >= len(vkeys[vk_row]):
+                    vk_col = len(vkeys[vk_row]) - 1
+            elif "DOWN" in nk:
+                vk_row = (vk_row + 1) % len(vkeys)
+                if vk_col >= len(vkeys[vk_row]):
+                    vk_col = len(vkeys[vk_row]) - 1
+            elif "LEFT" in nk:
+                vk_col = (vk_col - 1) % len(vkeys[vk_row])
+            elif "RIGHT" in nk:
+                vk_col = (vk_col + 1) % len(vkeys[vk_row])
+            elif "D" in nk or "C" in nk:
+                key = vkeys[vk_row][vk_col]
+                if key == "SPACE":
+                    nickname += " "
+                elif key == "DEL":
                     nickname = nickname[:-1]
+                elif key == "ENTER":
+                    if len(nickname.strip()) > 0:
+                        state = "nickname_done"
+                else:
+                    if len(nickname) < 12:
+                        nickname += key
+            elif "B" in keys:
+                nickname = nickname[:-1]
 
-        elif state == "nickname_done":
-            if event.type == pygame.KEYDOWN:
-                # 아무 키나 누르면 게임 시작
-                state = "main"
+    elif state == "nickname_done":
+        if keys:
+            # 아무 키나 누르면 게임 시작
+            state = "main"
+   
+    elif event.type == pygame.MOUSEBUTTONDOWN:
+        mx, my = pygame.mouse.get_pos()
        
-        elif event.type == pygame.MOUSEBUTTONDOWN:
-            mx, my = pygame.mouse.get_pos()
-           
-            if exit_button is not None and exit_button.collidepoint((mx, my)):
-                if state == "shooting":
-                    bullets.clear()
-                    enemies.clear()
-                    score = 0
-                    lives = 3
-                    shooting_game_over = False
-                    player_x = egg_center_x
-                    player_y = egg_y + 400
-                elif state == "running":
-                    obstacles.clear()
-                    stars.clear()
-                    running_score = 0
-                    running_lives = 3
-                    running_game_over = False
-                    is_jumping = False
-                    jump_velocity = 0
-                    jump_count = 0
-                elif state == "dodging":
-                    falling_objects.clear()
-                    dodger_score = 0
-                    dodger_lives = 3
-                    dodging_game_over = False
-                    dodger_x = 0
-                    dodger_y = 0
-                   
-                state = "game_select"    
-           
-            for i, rect in enumerate(left_buttons):
-                if rect.collidepoint(mx, my):
-                    button_pressed = [False, False, False]
-                    button_pressed[i] = True
-                    if i == 0:
-                        state = "main"
-                    elif i == 1:
-                        state = "game_select"
-                    elif i == 2:
-                        state = "main"
-                        rest_mode = True
-
-            if state == "game_select":
-                for i, rect in enumerate(menu_rects):
-                    if rect.collidepoint(mx, my):
-                        state = ["shooting", "running", "dodging"][i]
-
-        elif event.type == pygame.KEYDOWN:
-            if state == "main" and event.key == pygame.K_SPACE:
-                if not food:
-                    food = spawn_food(screen_rect)
-
-            elif state == "shooting":
-                if event.key == pygame.K_SPACE:
-                    bullets.append([player_x, player_y - 30])
-                elif event.key == pygame.K_r and shooting_game_over:
-                    bullets.clear()
-                    enemies.clear()
-                    score = 0
-                    lives = 3
-                    shooting_game_over = False
-                    shooting_game_played = False
-                    prev_shooting_over = False
-
+        if exit_button is not None and exit_button.collidepoint((mx, my)):
+            if state == "shooting":
+                bullets.clear()
+                enemies.clear()
+                score = 0
+                lives = 3
+                shooting_game_over = False
+                player_x = egg_center_x
+                player_y = egg_y + 400
             elif state == "running":
-                if event.key == pygame.K_SPACE and jump_count < MAX_JUMPS:
-                    is_jumping = True
-                    jump_velocity = -12
-                    jump_count += 1
-                elif event.key == pygame.K_r and running_game_over:
-                    runner_x = screen_rect.left + 50
-                    runner_y = egg_center_y
-                    obstacles.clear()
-                    stars.clear()
-                    running_score = 0
-                    running_lives = 3
-                    running_game_over = False
-                    running_game_played = False
-                    prev_running_over = False
-
-            elif state == "dodging" and event.key == pygame.K_r and dodging_game_over:
-                dodger_x = 0
-                dodger_y = 0
+                obstacles.clear()
+                stars.clear()
+                running_score = 0
+                running_lives = 3
+                running_game_over = False
+                is_jumping = False
+                jump_velocity = 0
+                jump_count = 0
+            elif state == "dodging":
+                falling_objects.clear()
                 dodger_score = 0
                 dodger_lives = 3
-                falling_objects.clear()
                 dodging_game_over = False
-                dodging_game_played = False
-                prev_dodging_over = False
+                dodger_x = 0
+                dodger_y = 0
+               
+            state = "game_select"    
+       
+        for i, rect in enumerate(left_buttons):
+            if rect.collidepoint(mx, my):
+                button_pressed = [False, False, False]
+                button_pressed[i] = True
+                if i == 0:
+                    state = "main"
+                elif i == 1:
+                    state = "game_select"
+                elif i == 2:
+                    state = "main"
+                    rest_mode = True
+
+        if state == "game_select":
+            for i, rect in enumerate(menu_rects):
+                if rect.collidepoint(mx, my):
+                    state = ["shooting", "running", "dodging"][i]
+
+    elif keys:
+        if state == "main" and "D" in keys:
+            if not food:
+                food = spawn_food(screen_rect)
+
+        elif state == "shooting":
+            if "D" in nk:
+                bullets.append([player_x, player_y - 30])
+            elif "A" in keys and shooting_game_over:
+                bullets.clear()
+                enemies.clear()
+                score = 0
+                lives = 3
+                shooting_game_over = False
+                shooting_game_played = False
+                prev_shooting_over = False
+
+        elif state == "running":
+            if "D" in keys and jump_count < MAX_JUMPS:
+                is_jumping = True
+                jump_velocity = -12
+                jump_count += 1
+            elif "A" in keys and running_game_over:
+                runner_x = screen_rect.left + 50
+                runner_y = egg_center_y
+                obstacles.clear()
+                stars.clear()
+                running_score = 0
+                running_lives = 3
+                running_game_over = False
+                running_game_played = False
+                prev_running_over = False
+
+        elif state == "dodging" and "A" in keys and dodging_game_over:
+            dodger_x = 0
+            dodger_y = 0
+            dodger_score = 0
+            dodger_lives = 3
+            falling_objects.clear()
+            dodging_game_over = False
+            dodging_game_played = False
+            prev_dodging_over = False
+           
+    lt = val
 
     if state == "start":
         draw_start_screen(screen, font_start, start_select_idx)
@@ -392,7 +433,7 @@ while running:
         draw_hello_screen(screen, font_start, nickname)
 
     elif state == "main":
-            screen_rect, left_buttons = draw_shell_ui(keys)
+            screen_rect, left_buttons = draw_shell_ui(kys)
            
             if not tama_initialized:
                 tama_x = screen_rect.centerx - tama_width // 2
@@ -431,10 +472,10 @@ while running:
                 # tilt_reacted가 아닌 일반 상태일 때만 원래 이미지 그림
                 screen.blit(img_scaled, (tama_x, tama_y))
     elif state == "game_select":
-            screen_rect, left_buttons = draw_shell_ui(keys)
+            screen_rect, left_buttons = draw_shell_ui(kys)
             menu_rects = draw_game_select_menu(screen, screen_rect, font, (BLACK, GRAY))
     elif state == "shooting":
-            screen_rect, _ = draw_shell_ui(keys)
+            screen_rect, _ = draw_shell_ui(kys)
            
             tama_w, tama_h = img_scaled_game.get_size()
            
@@ -451,7 +492,7 @@ while running:
             screen.blit(text, (exit_button.x + 10, exit_button.y + 5))
            
     elif state == "running":
-            screen_rect, _ = draw_shell_ui(keys)
+            screen_rect, _ = draw_shell_ui(kys)
                        
             runner_y, is_jumping, jump_velocity, jump_count, obstacles, stars, obstacle_timer, running_score, running_lives, running_game_over = draw_running_game(
                 screen, screen_rect, running_bg, gravity, img_scaled_game, coin_img, 80, font, (BLACK, YELLOW, RED),
@@ -467,7 +508,7 @@ while running:
             screen.blit(text, (exit_button.x + 10, exit_button.y + 5))
            
     elif state == "dodging":
-            screen_rect, _ = draw_shell_ui(keys)
+            screen_rect, _ = draw_shell_ui(kys)
            
             dodger_x, dodger_y, falling_objects, falling_timer, dodger_score, dodger_lives, dodging_game_over = draw_dodging_game(
                 screen, screen_rect, dodging_bg, img_scaled_game, falling_item_img, falling_interval, font, (PINK, RED, WHITE),
@@ -482,16 +523,16 @@ while running:
 
        
     if state == "shooting":
-        if keys[pygame.K_LEFT] and player_x - tama_w // 2 > screen_rect.left:
+        if "LEFT" in keys and player_x - tama_w // 2 > screen_rect.left:
             player_x -= 5
-        if keys[pygame.K_RIGHT] and player_x + tama_w // 2 < screen_rect.right:
+        if "RIGHT" in keys and player_x + tama_w // 2 < screen_rect.right:
             player_x += 5
     if state == "dodging":
         dodge_w, _ = img_scaled_game.get_size()
 
-        if keys[pygame.K_LEFT] and dodger_x > screen_rect.left:
+        if "LEFT" in keys and dodger_x > screen_rect.left:
             dodger_x -= dodger_speed
-        if keys[pygame.K_RIGHT] and dodger_x + dodge_w < screen_rect.right:
+        if "RIGHT" in keys and dodger_x + dodge_w < screen_rect.right:
             dodger_x += dodger_speed
 
     if screen_rect:
@@ -511,7 +552,19 @@ while running:
             update_mood(status, temp, humid)
             draw_temp_humid_bar(temp, humid)
             print(f"temp: {temp}C, humid: {humid}%, mood: {status['mood']}")
-
+           
+        light_state = GPIO.input(LIGHT_PIN)
+       
+        if light_state == GPIO.HIGH and not sleeping:
+            print("sleeping")
+            sleeping = True
+            start_sleep(status)
+           
+        elif light_state == GPIO.LOW and sleeping:
+            print("not sleeping")
+            sleeping = False
+            status["last_sleep_time"] = None
+       
     if food:
         (fx, fy), _ = food
         cx, cy = tama_x + tama_width // 2, tama_y + tama_height // 2
@@ -528,10 +581,10 @@ while running:
        
     if state == "main" and not tilt_reacted:
         if not rest_mode:
-            if keys[pygame.K_LEFT]: tama_x -= tama_speed
-            if keys[pygame.K_RIGHT]: tama_x += tama_speed
-            if keys[pygame.K_UP]: tama_y -= tama_speed
-            if keys[pygame.K_DOWN]: tama_y += tama_speed
+            if "LEFT" in keys: tama_x -= tama_speed
+            if "RIGHT" in keys: tama_x += tama_speed
+            if "UP" in keys: tama_y -= tama_speed
+            if "DOWN" in keys: tama_y += tama_speed
            
         tama_x = max(screen_rect.left, min(tama_x, screen_rect.right - tama_width))
         tama_y = max(screen_rect.top, min(tama_y, screen_rect.bottom - tama_height))
@@ -547,6 +600,19 @@ while running:
         overlay.set_alpha(100)
         overlay.fill((100, 100, 100))
         screen.blit(overlay, (screen_rect.left, screen_rect.top))
+       
+    if sleeping:
+        overlay = pygame.Surface((screen_rect.width, screen_rect.height))
+        overlay.set_alpha(50)
+        overlay.fill((50, 50, 50))
+        screen.blit(overlay, (screen_rect.left, screen_rect.top))
+       
+        sleep_text = font.render("Zzz...", True, WHITE)
+        screen.blit(sleep_text, (screen_rect.centerx - sleep_text.get_width() // 2, screen_rect.center[1] -        20))
+       
+        restored = check_sleep_restore(status)
+        if restored:
+            sleepnig = False
    
     if state == "shooting" and shooting_game_over and not prev_shooting_over:
             status["mood"] = min(100, status["mood"] + 10)
