@@ -121,7 +121,9 @@ coin_img = pygame.transform.scale(coin_img, (40, 40))  # 크기 조정
 dodging_bg = pygame.image.load("assets/game/dodging_background.png").convert()
 dodging_bg = pygame.transform.scale(dodging_bg, (320, 350))
 falling_item_img = pygame.image.load("assets/game/falling_item.png").convert_alpha()
-falling_item_img = pygame.transform.scale(falling_item_img, (40, 40)) 
+obstacle_img = pygame.image.load("assets/game/obstacle.png").convert_alpha()
+obstacle_img = pygame.transform.scale(obstacle_img, (40, 30))  # 기존 장애물과 같은 크기
+
 shooting_game_played = False
 running_game_played = False
 dodging_game_played = False
@@ -520,7 +522,7 @@ while running:
             screen_rect, _ = draw_shell_ui(keys)
                         
             runner_y, is_jumping, jump_velocity, jump_count, obstacles, stars, obstacle_timer, running_score, running_lives, running_game_over = draw_running_game(
-                screen, screen_rect, running_bg, gravity, img_scaled_game, coin_img, 80, font, (BLACK, YELLOW, RED),
+                screen, screen_rect, running_bg, gravity, img_scaled_game, coin_img, obstacle_img, 80, font, (BLACK, YELLOW, RED),
                 runner_y, is_jumping, jump_velocity, jump_count,
                 obstacles, stars, obstacle_timer,
                 running_score, running_lives, running_game_over
