@@ -2,11 +2,11 @@ import pygame
 import sys
 import random
 import board
-#import adafruit_dht
+import adafruit_dht
 import math
 import os
 import json
-#import RPi.GPIO as GPIO
+import RPi.GPIO as GPIO
 from status.base_status import init_status
 from status.mood import update_mood
 from status.hunger import update_hunger, feed
@@ -33,19 +33,19 @@ SAVE_FOLDER = "save_data"
 os.makedirs(SAVE_FOLDER, exist_ok=True)
 
 # 온습도 센서
-#dhtDevice = adafruit_dht.DHT11(board.D17)
+dhtDevice = adafruit_dht.DHT11(board.D17)
 
 # 기울기 센서
 tilt_reacted = False
 tilt_stage = 0
 tilt_timer = 0
 TILT_PIN = 27
-# GPIO.setmode(GPIO.BCM)
-# GPIO.setup(TILT_PIN, GPIO.IN, pull_up_down=GPIO.PUD_UP)
+GPIO.setmode(GPIO.BCM)
+GPIO.setup(TILT_PIN, GPIO.IN, pull_up_down=GPIO.PUD_UP)
 
 # 전역 상수
 WHITE, BLACK, YELLOW, PINK, BLUE, RED, GRAY = (255,255,255), (0,0,0), (255,230,0), (255,100,180), (0,180,255), (255,0,0), (200,200,200)
-BG_PINK, GREEN = (255,200,220), (0,200,0)
+BG_PINK, GREEN, PASTEL_YELLOW = (255,200,220), (0,200,0), (253, 253, 150)
 font = pygame.font.Font("assets/fonts/DungGeunMo.ttf", 24)
 font_small = pygame.font.Font("assets/fonts/DungGeunMo.ttf", 18)
 rest_text_list = ["휴 식 중", "휴 식 중 .", "휴 식 중 . .", "휴 식 중 . . ."]
@@ -76,13 +76,16 @@ eat_timer, rest_text_index, rest_text_timer = 0, 0, 0
 tama_speed = 5
 
 # 위치 계산
-egg_w, egg_h = 500, 580
-egg_x = (WIDTH - (egg_w + 250 + 40)) // 2
+egg_w, egg_h = 550, 620
+egg_x = (WIDTH - egg_w) // 2
 egg_y = (HEIGHT - egg_h) // 2
 egg_center_x = egg_x + egg_w // 2
 egg_center_y = egg_y + egg_h // 2
 tama_x = egg_center_x - tama_width // 2
 tama_y = egg_center_y - tama_height // 2
+
+egg_img = pygame.image.load("assets/egg.png").convert_alpha()
+egg_img = pygame.transform.scale(egg_img, (egg_w, egg_h))  # 기존 알 크기와 동일하게
 
 # 시작화면
 vkeys = [['A','B','C','D','E','F','G','H','I','J'], ['K','L','M','N','O','P','Q','R','S','T'], ['U','V','W','X','Y','Z','SPACE','DEL','ENTER']]
@@ -177,10 +180,10 @@ def draw_status_bar(label, value, x, y, color):
 
 def draw_shell_ui(keys):
     left_buttons = []
-    pygame.draw.ellipse(screen, BG_PINK, (egg_x, egg_y, egg_w, egg_h))
+    screen.blit(egg_img, (egg_x, egg_y))
     screen_w, screen_h = 320, 350
     screen_x = egg_center_x - screen_w // 2
-    screen_y = egg_y + 110
+    screen_y = egg_y + 130
     screen_rect = pygame.Rect(screen_x, screen_y, screen_w, screen_h)
     pygame.draw.rect(screen, WHITE, screen_rect, border_radius=10)
     pygame.draw.rect(screen, BLACK, screen_rect, 2, border_radius=10)
@@ -189,16 +192,16 @@ def draw_shell_ui(keys):
         text = font.render(rest_text_list[rest_text_index], True, (80, 80, 80))
         screen.blit(text, (screen_rect.centerx - text.get_width() // 2, screen_rect.top + 15))
 
-    screen.blit(font.render("다마고치 친구들", True, RED), (egg_center_x - 100, egg_y + 40))
+    screen.blit(font.render("다마고치 친구들", True, RED), (egg_center_x - 90, egg_y + 60))
 
     for i in range(3):
         bx = egg_x + 120 + i * 45
-        by = egg_y + egg_h - 85
+        by = egg_y + egg_h - 105
         color = BLACK if button_pressed[i] else GRAY
         pygame.draw.circle(screen, color, (bx, by), 15)
         left_buttons.append(pygame.Rect(bx - 15, by - 15, 30, 30))
 
-    base_x, base_y = egg_center_x + 90, egg_y + egg_h - 80
+    base_x, base_y = egg_center_x + 90, egg_y + egg_h - 100
     for dx, dy, key in [(0, -22, pygame.K_UP), (0, 22, pygame.K_DOWN), (-22, 0, pygame.K_LEFT), (22, 0, pygame.K_RIGHT)]:
         pygame.draw.rect(screen, BLACK if keys[key] else GRAY, (base_x + dx, base_y + dy, 12, 12))
 
@@ -425,11 +428,11 @@ while running:
                 tama_y = screen_rect.centery - tama_height // 2
                 tama_initialized = True
                
-            # if not tilt_reacted and GPIO.input(TILT_PIN) == GPIO.LOW:
-            #     tilt_reacted = True
-            #     tilt_stage = 0
-            #     tilt_timer = pygame.time.get_ticks()
-            #     status["mood"] = max(0, status["mood"] - 5)
+            if not tilt_reacted and GPIO.input(TILT_PIN) == GPIO.LOW:
+                tilt_reacted = True
+                tilt_stage = 0
+                tilt_timer = pygame.time.get_ticks()
+                status["mood"] = max(0, status["mood"] - 5)
 
             if tilt_reacted:
                 now = pygame.time.get_ticks()
@@ -471,10 +474,11 @@ while running:
             )
            
             exit_button = pygame.Rect(screen_rect.right - 40, screen_rect.top + 10, 30, 30)
-            pygame.draw.rect(screen, GRAY, exit_button, border_radius=8)
+            pygame.draw.rect(screen, PASTEL_YELLOW, exit_button, border_radius=8)
             pygame.draw.rect(screen, BLACK, exit_button, 2, border_radius=8)
             text = font.render("←", True, BLACK)
-            screen.blit(text, (exit_button.x + 10, exit_button.y + 5))
+            text_rect = text.get_rect(center=exit_button.center)
+            screen.blit(text, text_rect)
            
     elif state == "running":
             screen_rect, _ = draw_shell_ui(keys)
@@ -487,10 +491,11 @@ while running:
             )
            
             exit_button = pygame.Rect(screen_rect.right - 40, screen_rect.top + 10, 30, 30)
-            pygame.draw.rect(screen, GRAY, exit_button, border_radius=8)
+            pygame.draw.rect(screen, PASTEL_YELLOW, exit_button, border_radius=8)
             pygame.draw.rect(screen, BLACK, exit_button, 2, border_radius=8)
             text = font.render("←", True, BLACK)
-            screen.blit(text, (exit_button.x + 10, exit_button.y + 5))
+            text_rect = text.get_rect(center=exit_button.center)
+            screen.blit(text, text_rect)
            
     elif state == "dodging":
             screen_rect, _ = draw_shell_ui(keys)
@@ -501,10 +506,11 @@ while running:
             )
            
             exit_button = pygame.Rect(screen_rect.right - 40, screen_rect.top + 10, 30, 30)
-            pygame.draw.rect(screen, GRAY, exit_button, border_radius=8)
+            pygame.draw.rect(screen, PASTEL_YELLOW, exit_button, border_radius=8)
             pygame.draw.rect(screen, BLACK, exit_button, 2, border_radius=8)
             text = font.render("←", True, BLACK)
-            screen.blit(text, (exit_button.x + 10, exit_button.y + 5))
+            text_rect = text.get_rect(center=exit_button.center)
+            screen.blit(text, text_rect)
     elif state.endswith("_intro"):
             screen_rect, _ = draw_shell_ui(keys)
 
@@ -516,8 +522,8 @@ while running:
                 "dodging": dodging_bg
             }
             instructions = {
-                "shooting": ["스페이스바로 총알을 발사하세요!", "적을 맞히면 점수가 올라갑니다!"],
-                "running": ["스페이스바로 점프하세요!", "장애물을 피하고 코인을 모으세요!"],
+                "shooting": ["스페이스바로 총알을 발사해서", "적을 맞히세요!"],
+                "running": ["스페이스바로 점프해서", "장애물을 피하고 코인을 모으세요!"],
                 "dodging": ["좌우 방향키로 움직이세요!", "떨어지는 물체를 피하세요!"]
             }
 
@@ -529,7 +535,7 @@ while running:
             # 설명 문구 줄 단위 처리
             lines = instructions.get(game_name, ["게임 설명이 없습니다"])
             line_height = font_small.get_height()
-            box_width = max(font_small.size(line)[0] for line in lines) + 40
+            box_width = max(font_small.size(line)[0] for line in lines) + 20
             box_height = len(lines) * line_height + 40
             box_x = screen_rect.centerx - box_width // 2
             box_y = screen_rect.centery - box_height // 2
