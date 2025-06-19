@@ -1,6 +1,7 @@
 import pygame
 import sys
 import random
+import time
 import board
 import adafruit_dht
 import math
@@ -39,6 +40,12 @@ GPIO.setup(TILT_PIN, GPIO.IN, pull_up_down=GPIO.PUD_UP)
 LIGHT_PIN = 22
 GPIO.setup(LIGHT_PIN, GPIO.IN)
 
+BUZZER_PIN = 17
+GPIO.setmode(GPIO.BCM)
+GPIO.setup(BUZZER_PIN, GPIO.OUT)
+buzzer_pwm = GPIO.PWM(BUZZER_PIN, 440)  # 초기 주파수는 440Hz (A음)
+buzzer_pwm.start(0)  # 일단 멈춘 상태로 시작
+
 # 전역 상수
 WHITE, BLACK, YELLOW, PINK, BLUE, RED, GRAY = (255,255,255), (0,0,0), (255,230,0), (255,100,180), (0,180,255), (255,0,0), (200,200,200)
 BG_PINK, GREEN = (255,200,220), (0,200,0)
@@ -71,6 +78,7 @@ eat_timer, rest_text_index, rest_text_timer = 0, 0, 0
 tama_speed = 5
 sleeping = False
 sleep_detected = False
+melody_played = False
 
 # 위치 계산
 egg_w, egg_h = 500, 580
@@ -119,6 +127,14 @@ dodging_game_played = False
 prev_shooting_over = False
 prev_running_over = False 
 prev_dodging_over = False
+
+def play_melody():
+    melody = [262, 294, 330, 392, 440, 494, 523]  # 도, 레, 미, 솔, 라, 시, 도
+    buzzer_pwm.start(50)  # 50% Duty cycle
+    for freq in melody:
+        buzzer_pwm.ChangeFrequency(freq)
+        time.sleep(0.2)
+    buzzer_pwm.stop()
 
 # 상태 업데이트 함수
 def update_all_status():
@@ -510,6 +526,12 @@ while running:
 
     update_all_status()
     
+    if (status["mood"] >= 90 and status["hunger"] >= 90 and status["fatigue"] >= 90 and not melody_played):
+        play_melody()
+        melody_played = True
+    elif status["mood"] < 90 or status["hunger"] < 90 or status["fatigue"] < 90:
+        melody_played = False
+        
     if state == "main":
         temp, humid = read_temperature_humidity()
         if temp is not None and humid is not None:
@@ -599,6 +621,9 @@ while running:
 
     pygame.display.flip()
     clock.tick(60)
+
+buzzer_pwm.stop()
+GPIO.cleanup()
 
 pygame.quit()
 sys.exit()
