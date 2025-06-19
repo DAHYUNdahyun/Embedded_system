@@ -2,7 +2,7 @@ import pygame
 import random
 from game.draw_heart import draw_lives_hearts
 
-def draw_running_game(screen, screen_rect, background_img, gravity, tama_img_game, coin_img, obstacle_interval, font, colors,
+def draw_running_game(screen, screen_rect, background_img, gravity, tama_img_game, coin_img, obstacle_img, obstacle_interval, font, colors,
     runner_y, is_jumping, jump_velocity, jump_count,
     obstacles, stars, obstacle_timer,
     running_score, running_lives, running_game_over):
@@ -51,7 +51,7 @@ def draw_running_game(screen, screen_rect, background_img, gravity, tama_img_gam
         # 장애물/별 이동 및 충돌
         for obs in obstacles[:]:
             obs["pos"][0] -= obs["speed"]
-            pygame.draw.rect(screen, BLACK, (*obs["pos"], 40, 30))  # 허들
+            screen.blit(obstacle_img, obs["pos"])
             # 충돌 검사
             if runner_y + 50 > obs["pos"][1] and screen_rect.left + 50 < obs["pos"][0] < screen_rect.left + 90:
                 obstacles.remove(obs)
