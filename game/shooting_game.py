@@ -79,7 +79,7 @@ def draw_shooting_game(screen, screen_rect, background_img, tama_img_game, enemy
     if shooting_game_over:
         over_text1 = font.render("Game Over!", True, RED)
         screen.blit(over_text1, (screen_rect.centerx - over_text1.get_width() // 2, screen_rect.centery - 30))
-        over_text2 = font.render("Press R to Restart", True, RED)
+        over_text2 = font.render("R을 눌러 재시작하세요", True, RED)
         screen.blit(over_text2, (screen_rect.centerx - over_text2.get_width() // 2, screen_rect.centery - 5))
     
     return bullets, enemies, enemy_spawn_timer, score, lives, shooting_game_over
