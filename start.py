@@ -66,14 +66,24 @@ def draw_virtual_keyboard(screen, font_obj, vkeys, vk_row, vk_col):
     for r, row in enumerate(vkeys):
         vk_x = screen_width // 2 - total_row_widths[r] // 2
         for c, key in enumerate(row):
-            rect = pygame.Rect(vk_x + c * (key_w + padding), vk_y + r * (key_h + padding), key_w, key_h)
-            color = BLUE if (r == vk_row and c == vk_col) else GRAY
-            pygame.draw.rect(screen, color, rect, border_radius=6)
-            disp_key = " " if key == "SPACE" else key
-            text_color = WHITE if (r == vk_row and c == vk_col) else BLACK
-            key_text = font_obj.render(disp_key, True, text_color)
-            text_rect = key_text.get_rect(center=rect.center)
-            screen.blit(key_text, text_rect)
+            if key == "SPACE" or key == "DEL" or key == "ENTER":
+                rect = pygame.Rect(vk_x + c * (key_w + padding), vk_y + r * (key_h + padding), key_w, key_h)
+                color = BG_PINK if (r == vk_row and c == vk_col) else BG_PINK
+                pygame.draw.rect(screen, color, rect, border_radius=6)
+                disp_key = " " if key == "SPACE" else key
+                text_color = BG_PINK if (r == vk_row and c == vk_col) else BG_PINK
+                key_text = font_obj.render(disp_key, True, text_color)
+                text_rect = key_text.get_rect(center=rect.center)
+                screen.blit(key_text, text_rect)  
+            else:
+                rect = pygame.Rect(vk_x + c * (key_w + padding), vk_y + r * (key_h + padding), key_w, key_h)
+                color = BLUE if (r == vk_row and c == vk_col) else GRAY
+                pygame.draw.rect(screen, color, rect, border_radius=6)
+                disp_key = " " if key == "SPACE" else key
+                text_color = WHITE if (r == vk_row and c == vk_col) else BLACK
+                key_text = font_obj.render(disp_key, True, text_color)
+                text_rect = key_text.get_rect(center=rect.center)
+                screen.blit(key_text, text_rect)
 
     special_labels = ["SPACE", "DEL", "ENTER"]
     special_key_w = 100
@@ -90,6 +100,7 @@ def draw_virtual_keyboard(screen, font_obj, vkeys, vk_row, vk_col):
         key_text = font_obj.render(label, True, text_color)
         text_rect = key_text.get_rect(center=rect.center)
         screen.blit(key_text, text_rect)
+
 
 def draw_nickname_screen(screen, font_obj, nickname, vkeys, vk_row, vk_col):
     screen.fill(BG_PINK)
