@@ -7,13 +7,14 @@ import math
 import os
 import json
 import RPi.GPIO as GPIO
+import smbus
 from status.base_status import init_status
 from status.mood import update_mood
 from status.hunger import update_hunger, feed
 from status.fatigue import check_sleep_restore
 from status.health import update_health
 from status.evolution import update_evolution
-from status.actions import rest
+from status.actions import rest, start_sleep
 from game.game_select import draw_game_select_menu
 from game.shooting_game import draw_shooting_game
 from game.running_game import draw_running_game
@@ -42,6 +43,9 @@ tilt_timer = 0
 TILT_PIN = 27
 GPIO.setmode(GPIO.BCM)
 GPIO.setup(TILT_PIN, GPIO.IN, pull_up_down=GPIO.PUD_UP)
+
+LIGHT_PIN = 22
+GPIO.setup(LIGHT_PIN, GPIO.IN)
 
 # 전역 상수
 WHITE, BLACK, YELLOW, PINK, BLUE, RED, GRAY = (255,255,255), (0,0,0), (255,230,0), (255,100,180), (0,180,255), (255,0,0), (200,200,200)
@@ -74,6 +78,8 @@ menu_rects = []
 food, food_radius, eating = None, 10, False
 eat_timer, rest_text_index, rest_text_timer = 0, 0, 0
 tama_speed = 5
+sleeping = False
+sleep_detected = False
 
 # 위치 계산
 egg_w, egg_h = 550, 620
@@ -126,6 +132,30 @@ prev_running_over = False
 prev_dodging_over = False
 intro_timer = 0           # 게임 설명 시작 시간
 selected_game = None      # 선택한 게임 이름 저장
+
+TOUCH_KEY_MAP = {
+    1: "DOWN",     # 키 1
+    2: "RIGHT",    # 키 2
+    4: "UP",       # 키 3
+    8: "LEFT",     # 키 4
+    16: "A",       # 키 5
+    32: "B",       # 키 6
+    64: "C",       # 키 7
+    128: "D",      # 키 8
+}
+
+I2C_ADDR = 0x57
+bus = smbus.SMBus(1)
+
+def read_touch_keys():
+    try:
+        value = bus.read_byte(I2C_ADDR)
+        return value
+    except:
+        return 0
+
+def parse_keys(value):
+    return [name for bit, name in TOUCH_KEY_MAP.items() if value & bit]
 
 # 상태 업데이트 함수
 def update_all_status():
@@ -232,8 +262,10 @@ food_images = load_food_images()
 running = True
 while running:
     screen.fill(WHITE)
-    keys = pygame.key.get_pressed()
-
+    val = read_touch_keys()
+    keys = parse_keys(val)
+    kys = pygame.key.get_pressed()
+    nk = parse_keys(val & ~lt)
    
     # 1. 진화 단계 및 감정에 맞는 이미지 선택
     evo = get_evolution_stage(status["evolution"])
@@ -262,40 +294,41 @@ while running:
         if event.type == pygame.QUIT:
             running = False
         if state == "start":
-            if event.type == pygame.KEYDOWN:
-                if event.key == pygame.K_UP or event.key == pygame.K_DOWN:
+            if keys:
+                if "UP" in nk or "DOWN" in nk:
+                #if "UP" in keys or "DOWN" in keys:
                     start_select_idx = 1 - start_select_idx  # 0↔1 토글
-                elif event.key == pygame.K_SPACE or event.key == pygame.K_RETURN:
+                elif "D" in keys or "C" in keys:    
                     if start_select_idx == 0:
                         state = "nickname"
                         nickname = ""
                         vk_row, vk_col = 0, 0
                     else:
                         state = "instruction"
-                elif event.key == pygame.K_ESCAPE:
+                elif "A" in keys:
                     running = False
 
         elif state == "instruction":
-            if event.type == pygame.KEYDOWN:
+            if keys:
                 state = "nickname"
                 nickname = ""
                 vk_row, vk_col = 0, 0
 
         elif state == "nickname":
-            if event.type == pygame.KEYDOWN:
-                if event.key == pygame.K_UP:
+            if keys:
+                if "UP" in nk:
                     vk_row = (vk_row - 1) % len(vkeys)
                     if vk_col >= len(vkeys[vk_row]):
                         vk_col = len(vkeys[vk_row]) - 1
-                elif event.key == pygame.K_DOWN:
+                elif "DOWN" in nk:
                     vk_row = (vk_row + 1) % len(vkeys)
                     if vk_col >= len(vkeys[vk_row]):
                         vk_col = len(vkeys[vk_row]) - 1
-                elif event.key == pygame.K_LEFT:
+                elif "LEFT" in nk:
                     vk_col = (vk_col - 1) % len(vkeys[vk_row])
-                elif event.key == pygame.K_RIGHT:
+                elif "RIGHT" in nk:
                     vk_col = (vk_col + 1) % len(vkeys[vk_row])
-                elif event.key == pygame.K_SPACE or event.key == pygame.K_RETURN:
+                elif "D" in nk or "C" in nk:
                     key = vkeys[vk_row][vk_col]
                     if key == "SPACE":
                         nickname += " "
@@ -307,11 +340,11 @@ while running:
                     else:
                         if len(nickname) < 12:
                             nickname += key
-                elif event.key == pygame.K_BACKSPACE:
+                elif "B" in keys:
                     nickname = nickname[:-1]
 
         elif state == "nickname_done":
-            if event.type == pygame.KEYDOWN:
+            if keys:
                 status = load_status(nickname)
                 state = "main"
        
@@ -365,15 +398,15 @@ while running:
                         state = selected_game + "_intro"
                         intro_timer = pygame.time.get_ticks()
 
-        elif event.type == pygame.KEYDOWN:
-            if state == "main" and event.key == pygame.K_SPACE:
+        elif keys:
+            if state == "main" and "D" in keys:
                 if not food:
                     food = spawn_food(screen_rect)
 
             elif state == "shooting":
-                if event.key == pygame.K_SPACE:
+                if "D" in nk:
                     bullets.append([player_x, player_y - 30])
-                elif event.key == pygame.K_r and shooting_game_over:
+                elif "A" in keys and shooting_game_over:
                     bullets.clear()
                     enemies.clear()
                     score = 0
@@ -383,11 +416,11 @@ while running:
                     prev_shooting_over = False
 
             elif state == "running":
-                if event.key == pygame.K_SPACE and jump_count < MAX_JUMPS:
+                if "D" in keys and jump_count < MAX_JUMPS:
                     is_jumping = True
                     jump_velocity = -12
                     jump_count += 1
-                elif event.key == pygame.K_r and running_game_over:
+                elif "A" in keys and running_game_over:
                     runner_x = screen_rect.left + 50
                     runner_y = egg_center_y
                     obstacles.clear()
@@ -398,7 +431,7 @@ while running:
                     running_game_played = False
                     prev_running_over = False
 
-            elif state == "dodging" and event.key == pygame.K_r and dodging_game_over:
+            elif state == "dodging" and "A" in keys and dodging_game_over:
                 dodger_x = 0
                 dodger_y = 0
                 dodger_score = 0
@@ -407,6 +440,8 @@ while running:
                 dodging_game_over = False
                 dodging_game_played = False
                 prev_dodging_over = False
+
+    lt = val
 
     if state == "start":
         draw_start_screen(screen, font, start_select_idx)
@@ -558,16 +593,16 @@ while running:
                 state = game_name
        
     if state == "shooting":
-        if keys[pygame.K_LEFT] and player_x - tama_w // 2 > screen_rect.left:
+        if "LEFT" in keys and player_x - tama_w // 2 > screen_rect.left:
             player_x -= 5
-        if keys[pygame.K_RIGHT] and player_x + tama_w // 2 < screen_rect.right:
+        if "RIGHT" in keys and player_x + tama_w // 2 < screen_rect.right:
             player_x += 5
     if state == "dodging":
         dodge_w, _ = img_scaled_game.get_size()
 
-        if keys[pygame.K_LEFT] and dodger_x > screen_rect.left:
+        if "LEFT" in keys and dodger_x > screen_rect.left:
             dodger_x -= dodger_speed
-        if keys[pygame.K_RIGHT] and dodger_x + dodge_w < screen_rect.right:
+        if "RIGHT" in keys and dodger_x + dodge_w < screen_rect.right:
             dodger_x += dodger_speed
 
     if screen_rect:
@@ -587,6 +622,18 @@ while running:
             update_mood(status, temp, humid)
             draw_temp_humid_bar(temp, humid)
             print(f"temp: {temp}C, humid: {humid}%, mood: {status['mood']}")
+            
+        light_state = GPIO.input(LIGHT_PIN)
+       
+        if light_state == GPIO.HIGH and not sleeping:
+            print("sleeping")
+            sleeping = True
+            start_sleep(status)
+           
+        elif light_state == GPIO.LOW and sleeping:
+            print("not sleeping")
+            sleeping = False
+            status["last_sleep_time"] = None
 
     if food:
         (fx, fy), _ = food
@@ -604,10 +651,10 @@ while running:
        
     if state == "main" and not tilt_reacted:
         if not rest_mode:
-            if keys[pygame.K_LEFT]: tama_x -= tama_speed
-            if keys[pygame.K_RIGHT]: tama_x += tama_speed
-            if keys[pygame.K_UP]: tama_y -= tama_speed
-            if keys[pygame.K_DOWN]: tama_y += tama_speed
+            if "LEFT" in keys: tama_x -= tama_speed
+            if "RIGHT" in keys: tama_x += tama_speed
+            if "UP" in keys: tama_y -= tama_speed
+            if "DOWN" in keys: tama_y += tama_speed
            
         tama_x = max(screen_rect.left, min(tama_x, screen_rect.right - tama_width))
         tama_y = max(screen_rect.top, min(tama_y, screen_rect.bottom - tama_height))
