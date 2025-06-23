@@ -27,7 +27,7 @@ from start import draw_start_screen, draw_instruction_screen, draw_virtual_keybo
 pygame.init()
 WIDTH, HEIGHT = 1300, 700
 screen = pygame.display.set_mode((WIDTH, HEIGHT))
-pygame.display.set_caption("Tamagotchi Style UI")
+pygame.display.set_caption("Tamagotchi Friends")
 clock = pygame.time.Clock()
 load_heart_images()
 
@@ -39,6 +39,7 @@ tilt_timer = 0
 TILT_PIN = 27
 GPIO.setmode(GPIO.BCM)
 GPIO.setup(TILT_PIN, GPIO.IN, pull_up_down=GPIO.PUD_UP)
+mood_restored = False
 
 LIGHT_PIN = 22
 GPIO.setup(LIGHT_PIN, GPIO.IN)
@@ -51,6 +52,8 @@ buzzer_pwm.start(0)  # 일단 멈춘 상태로 시작
 
 SAVE_FOLDER = "save_data"
 os.makedirs(SAVE_FOLDER, exist_ok=True)
+
+instruction_pages= 0
 
 # 전역 상수
 WHITE, BLACK, YELLOW, PINK, BLUE, RED, GRAY = (255,255,255), (0,0,0), (255,230,0), (255,100,180), (0,180,255), (255,0,0), (200,200,200)
@@ -110,14 +113,14 @@ start_select_idx = 0
 # 게임 관련 변수
 player_x, player_y = egg_center_x, egg_y + 400
 enemy_spawn_timer, score, lives, shooting_game_over = 0, 0, 3, False
-bullets, enemies, bullet_speed, enemy_speed = [], [], 10, 3
+bullets, enemies, bullet_speed, enemy_speed = [], [], 20, 3
 runner_x, runner_y = egg_center_x - 50, egg_center_y + 60
-runner_speed, gravity = 3, 0.5
+runner_speed, gravity = 6, 0.5
 obstacles, stars, obstacle_timer, star_timer = [], [], 0, 0
 running_score, running_lives, running_game_over = 0, 3, False
 is_jumping, jump_velocity, jump_count, MAX_JUMPS = False, 0, 0, 5
 dodger_x, dodger_y = 0, 0
-dodger_speed, dodger_lives, dodger_score, dodging_game_over = 5, 3, 0, False
+dodger_speed, dodger_lives, dodger_score, dodging_game_over = 10, 3, 0, False
 falling_objects, falling_timer, falling_interval = [], 0, 40    
 exit_button = None
 shooting_bg = pygame.image.load("assets/game/shooting_background.png").convert()
@@ -132,7 +135,7 @@ dodging_bg = pygame.image.load("assets/game/dodging_background.png").convert()
 dodging_bg = pygame.transform.scale(dodging_bg, (320, 350))
 falling_item_img = pygame.image.load("assets/game/falling_item.png").convert_alpha()
 falling_item_img = pygame.transform.scale(falling_item_img, (40, 40))
-obstacle_img = pygame.image.load("assets/game/obstacle.png").convert()
+obstacle_img = pygame.image.load("assets/game/obstacle.png").convert_alpha()
 obstacle_img = pygame.transform.scale(obstacle_img, (40, 30))
 status_bg = pygame.image.load("assets/status_background.png").convert_alpha()
 status_bg = pygame.transform.scale(status_bg, (300, 300))  # 상태바 크기에 맞게 조정
@@ -144,9 +147,17 @@ prev_shooting_over = False
 prev_running_over = False
 prev_dodging_over = False
 intro_timer = 0
+instruction_timer = None
 selected_game = None
 show_manual_modal = False
 current_manual_page = 0  # 현재 페이지 인덱스
+
+instruction_pages = [ 
+[ "📘 소개", "이 다마고치는 단순한 가상 펫이 아닙니다.", "라즈베리파이와 다양한 센서를 활용한", "인터랙티브 스마트 반려 생명체입니다.", "환경을 감지하고, 사용자와 소통하며,", "진화하고, 게임도 함께 즐깁니다!", ], 
+[ "📦 주요 기능", "🧠 AI 감정 시스템", "온도/습도에 따라 기분이 변하고,", "음식, 피로, 게임 활동 등으로 상태가 반영됩니다.", "🌡️ DHT11 센서로 온습도 감지", "쾌적한 환경이면 기분이 좋아지고,", "덥거나 습하면 슬퍼져요!" ], 
+[ "🔦 조도 센서 (빛 감지)", "어두운 환경에서는 잠에 빠지고,", "밝아지면 자동으로 깨어납니다.", "🎮 세 가지 미니게임 내장", "슈팅 게임 / 러닝 게임 / 회피 게임", "게임으로 피로도를 회복할 수 있어요!" ], 
+[ "🍖 먹이주기 기능", "직접 먹이를 소환해서 배불리 먹이세요!", "😵 기울임 반응 (Tilt 센서)", "다마고치를 심하게 흔들면 어지러워해요...", "🔊 부저 멜로디", "모든 상태가 만족스러우면", "기분 좋은 소리를 들려줘요!" ], 
+[ "💡 사용 방법", "전원을 켜면 시작 화면이 나타납니다.", "닉네임을 설정하면 부화해요.", "UI 버튼과 터치센서로 상호작용할 수 있어요.", "왼쪽 버튼: 메인 화면", "가운데 버튼: 게임 선택", "오른쪽 버튼: 휴식 모드 전환", "다양한 자극에 반응하는 다마고치를 관찰해보세요!" ] ]
 
 manual_pages = [
     [  # 0번 페이지 - 전체 요약
@@ -335,7 +346,7 @@ def draw_shell_ui(keys):
     screen.blit(egg_img, (egg_x, egg_y, egg_w, egg_h))    
     screen_w, screen_h = 320, 350
     screen_x = egg_center_x - screen_w // 2
-    screen_y = egg_y + 110
+    screen_y = egg_y + 125
     screen_rect = pygame.Rect(screen_x, screen_y, screen_w, screen_h)
     pygame.draw.rect(screen, WHITE, screen_rect, border_radius=10)
     pygame.draw.rect(screen, BLACK, screen_rect, 2, border_radius=10)
@@ -348,22 +359,25 @@ def draw_shell_ui(keys):
 
     for i in range(3):
         bx = egg_x + 120 + i * 45
-        by = egg_y + egg_h - 185
+        by = egg_y + egg_h - 85
         color = BLACK if button_pressed[i] else GRAY
         pygame.draw.circle(screen, color, (bx, by), 15)
         left_buttons.append(pygame.Rect(bx - 15, by - 15, 30, 30))
 
     base_x, base_y = egg_center_x + 90, egg_y + egg_h - 80
     for dx, dy, key in [(0, -22, pygame.K_UP), (0, 22, pygame.K_DOWN), (-22, 0, pygame.K_LEFT), (22, 0, pygame.K_RIGHT)]:
-        pygame.draw.rect(screen, BLACK if keys[key] else GRAY, (base_x + dx, base_y + dy, 12, 12))
+        if 0 <= key < len(keys):
+            pygame.draw.rect(screen, BLACK if keys[key] else GRAY, (base_x + dx, base_y + dy, 12, 12))
+        else:
+            pygame.draw.rect(screen, GRAY, (base_x + dx, base_y + dy, 12, 12))
 
     status_bg_x = egg_x + egg_w + 60
-    status_bg_y = egg_y + 110
+    status_bg_y = egg_y + 130
     
     manual_box_w = status_bg.get_width()
     manual_box_h = 60
     manual_box_x = status_bg_x
-    manual_box_y = status_bg_y - manual_box_h - 20  # 상태바 위에 여백 20
+    manual_box_y = status_bg_y - manual_box_h  # 상태바 위에 여백 20
 
     manual_box_img = pygame.image.load("assets/manual_box_background.png").convert_alpha()
     manual_box_img = pygame.transform.scale(manual_box_img, (300, 80))
@@ -470,10 +484,13 @@ while running:
                 running = False
 
     elif state == "instruction":
-        if keys:
+        if instruction_timer is None:
+            instruction_timer = time.time()
+        if keys and time.time() - instruction_timer >= 3:
             state = "nickname"
             nickname = ""
             vk_row, vk_col = 0, 0
+            instruction_timer = None
 
     elif state == "nickname":
         if keys:
@@ -636,7 +653,17 @@ while running:
         draw_start_screen(screen, font, start_select_idx)
 
     elif state == "instruction":
-        draw_instruction_screen(screen, font)
+        draw_instruction_screen(screen, font, instruction_pages)
+
+        if keys:
+            if "LEFT" in nk:
+                instruction_pages= max(0, instruction_pages- 1)
+            elif "RIGHT" in nk:
+                instruction_pages= min(len(instruction_pages) - 1, instruction_pages+ 1)
+            elif "D" in nk or "C" in nk or "ENTER" in nk:
+                state = "nickname"
+                nickname = ""
+                vk_row, vk_col = 0, 0
 
     elif state == "nickname":
         draw_nickname_screen(screen, font, nickname, vkeys, vk_row, vk_col)
@@ -656,7 +683,7 @@ while running:
                 tilt_reacted = True
                 tilt_stage = 0
                 tilt_timer = pygame.time.get_ticks()
-                status["mood"] = max(0, status["mood"] - 5)
+                mood_restored = False
 
             if tilt_reacted:
                 now = pygame.time.get_ticks()
@@ -668,6 +695,7 @@ while running:
                     if now - tilt_timer > 1000:
                         tilt_stage = 1
                         tilt_timer = now
+                        mood_updated = False
 
                 elif tilt_stage == 1:
                     # 2단계: 진화단계에 맞는 dizzy 이미지 보여주기
@@ -677,6 +705,11 @@ while running:
                     screen.blit(dizzy_scaled, (tama_x, tama_y))
                     dizzy_text = font.render("I'm dizzy...", True, BLACK)
                     screen.blit(dizzy_text, (tama_x, tama_y - 30))
+                    
+                    if not mood_restored:
+                        status["mood"] = min(100, status["mood"] + 5)
+                        mood_restored = True
+                    
                     if now - tilt_timer > 2000:
                         tilt_reacted = False  # 원래 상태로 돌아감
 
@@ -684,10 +717,10 @@ while running:
                 # tilt_reacted가 아닌 일반 상태일 때만 원래 이미지 그림
                 screen.blit(img_scaled, (tama_x, tama_y))
     elif state == "game_select":
-            screen_rect, left_buttons = draw_shell_ui(kys)
+            screen_rect, left_buttons, manual_box_rect = draw_shell_ui(kys)
             menu_rects = draw_game_select_menu(screen, screen_rect, font, (BLACK, GRAY))
     elif state == "shooting":
-            screen_rect, _ = draw_shell_ui(kys)
+            screen_rect, _, _ = draw_shell_ui(kys)
            
             tama_w, tama_h = img_scaled_game.get_size()
            
@@ -705,7 +738,7 @@ while running:
             screen.blit(text, text_rect)
            
     elif state == "running":
-            screen_rect, _ = draw_shell_ui(kys)
+            screen_rect, _, _ = draw_shell_ui(kys)
                        
             runner_y, is_jumping, jump_velocity, jump_count, obstacles, stars, obstacle_timer, running_score, running_lives, running_game_over = draw_running_game(
                 screen, screen_rect, running_bg, gravity, img_scaled_game, coin_img, obstacle_img, 80, font, (BLACK, YELLOW, RED),
@@ -722,7 +755,7 @@ while running:
             screen.blit(text, text_rect)
            
     elif state == "dodging":
-            screen_rect, _ = draw_shell_ui(kys)
+            screen_rect, _, _ = draw_shell_ui(kys)
            
             dodger_x, dodger_y, falling_objects, falling_timer, dodger_score, dodger_lives, dodging_game_over = draw_dodging_game(
                 screen, screen_rect, dodging_bg, img_scaled_game, falling_item_img, falling_interval, font, (PINK, RED, WHITE),
@@ -737,7 +770,7 @@ while running:
             screen.blit(text, text_rect)
 
     elif state.endswith("_intro"):
-        screen_rect, _ = draw_shell_ui(kys)
+        screen_rect, _, _ = draw_shell_ui(kys)
 
         # 어떤 게임 설명인지 판단
         game_name = state.replace("_intro", "")
@@ -805,14 +838,14 @@ while running:
         rest_mode = False
 
     update_all_status()
-    
-    if (status["mood"] >= 90 and status["hunger"] >= 90 and status["fatigue"] >= 90 and not melody_played):
-        play_melody()
-        melody_played = True
-    elif status["mood"] < 90 or status["hunger"] < 90 or status["fatigue"] < 90:
-        melody_played = False
 
     if state == "main":
+        if (status["mood"] >= 90 and status["hunger"] >= 90 and status["fatigue"] >= 90 and not melody_played):
+            play_melody()
+            melody_played = True
+        elif status["mood"] < 90 or status["hunger"] < 90 or status["fatigue"] < 90:
+            melody_played = False
+        
         temp, humid = read_temperature_humidity()
         if temp is not None and humid is not None:
             update_mood(status, temp, humid)

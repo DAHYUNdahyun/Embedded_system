@@ -37,24 +37,20 @@ def draw_start_screen(screen, font_obj, start_select_idx):
 
     draw_text_center(screen, "다마고치 키우기", 233 + offset_y, WHITE if start_select_idx == 0 else BLACK, font_obj=font_obj)
     draw_text_center(screen, "설명", 303 + offset_y, WHITE if start_select_idx == 1 else BLACK, font_obj=font_obj)
+def draw_instruction_screen(screen, font_obj, page=0): 
+    screen.fill(WHITE) 
+    title_font = pygame.font.SysFont("Arial", 36, bold=True) 
+    draw_text_center(screen, "Instruction Manual", 60, (0, 0, 0), title_font)
 
-def draw_instruction_screen(screen, font_obj):
-    screen.fill(WHITE)
-    screen_width = screen.get_width()
-    title_font = pygame.font.SysFont("Arial", 36, bold=True)
-    draw_text_center(screen, "Controls", 80, (255, 10, 10), title_font)
+    if page < 0 or page >= len(instruction_pages):
+        return
 
-    lines = [
-        "",
-        "Arrow Keys: Move / Navigate",
-        "Spacebar: Select",
-        "",
-        "Move near food to eat it automatically.",
-        "",
-        "Press any key to continue"
-    ]
-    for i, line in enumerate(lines):
-        draw_text_center(screen, line, 140 + i * 40, font_obj=font_obj)
+    for i, line in enumerate(instruction_pages[page]):
+        draw_text_center(screen, line, 140 + i * 36, font_obj=font_obj)
+
+    # 페이지 넘김 안내
+    tip = f"← {page+1}/{len(instruction_pages)} →"
+    draw_text_center(screen, tip, screen.get_height() - 60, (100, 100, 100), font_obj)
 
 def draw_virtual_keyboard(screen, font_obj, vkeys, vk_row, vk_col):
     screen_width = screen.get_width()
