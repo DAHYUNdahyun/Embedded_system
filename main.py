@@ -1,6 +1,7 @@
 import pygame
 import sys
 import random
+import time
 import board
 import adafruit_dht
 import math
@@ -442,8 +443,10 @@ while running:
     game_ratio = game_width / iw
     img_scaled_game = pygame.transform.scale(image, (int(iw * game_ratio), int(ih * game_ratio)))
        
-    if state in ["main", "game_select", "shooting", "running", "dodging"]:
-        screen_rect, left_buttons = draw_shell_ui(kys)
+    if state == "main":
+        screen_rect, left_buttons, manual_box_rect = draw_shell_ui(keys)
+    elif state in ["game_select", "shooting", "running", "dodging"]:
+        screen_rect, left_buttons, _ = draw_shell_ui(keys)  # manual_rect 무시
     else:
         screen_rect, left_buttons = None, []
        
@@ -572,6 +575,17 @@ while running:
                     selected_game = ["shooting", "running", "dodging"][i]
                     state = selected_game + "_intro"
                     intro_timer = pygame.time.get_ticks()
+                    
+        # manual 버튼은 main 상태일 때만 처리
+        if state == "main":
+            if show_manual_modal:
+                close_btn, left_btn, right_btn = draw_manual_modal()
+                if close_btn.collidepoint((mx, my)):
+                    show_manual_modal = False
+            else:
+                if manual_box_rect.collidepoint((mx, my)):
+                    show_manual_modal = True
+
 
     elif keys:
         if state == "main" and "D" in keys:
@@ -631,7 +645,7 @@ while running:
         draw_hello_screen(screen, font, nickname)
 
     elif state == "main":
-            screen_rect, left_buttons = draw_shell_ui(kys)
+            screen_rect, left_buttons, manual_box_rect = draw_shell_ui(kys)
            
             if not tama_initialized:
                 tama_x = screen_rect.centerx - tama_width // 2
@@ -884,6 +898,9 @@ while running:
             dodging_game_played = True
             prev_dodging_over = True
             print("mood +10 fatigue +15")
+            
+    if show_manual_modal:
+        draw_manual_modal()
 
     pygame.display.flip()
     clock.tick(60)
