@@ -33,13 +33,4 @@
 - 각 게임에서 나가서 게임 선택 창에서 다시 게임 선택하는 나가기 버튼 추가
 - 게임 디자인 개선
 
-
-# ✨ 반투명 흰색 박스 생성
-    box_width = 800
-    box_height = 360
-    box_x = (screen_width - box_width) // 2
-    box_y = 100
-
-    box_surface = pygame.Surface((box_width, box_height), pygame.SRCALPHA)  # 알파 채널 포함
-    box_surface.fill((255, 255, 255, 180))  # 흰색, 투명도 180/255
-    screen.blit(box_surface, (box_x, box_y))
+전원
