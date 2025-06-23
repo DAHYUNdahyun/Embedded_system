@@ -42,6 +42,12 @@ GPIO.setup(TILT_PIN, GPIO.IN, pull_up_down=GPIO.PUD_UP)
 LIGHT_PIN = 22
 GPIO.setup(LIGHT_PIN, GPIO.IN)
 
+BUZZER_PIN = 18
+GPIO.setmode(GPIO.BCM)
+GPIO.setup(BUZZER_PIN, GPIO.OUT)
+buzzer_pwm = GPIO.PWM(BUZZER_PIN, 440)  # 초기 주파수는 440Hz (A음)
+buzzer_pwm.start(0)  # 일단 멈춘 상태로 시작
+
 SAVE_FOLDER = "save_data"
 os.makedirs(SAVE_FOLDER, exist_ok=True)
 
@@ -79,10 +85,12 @@ eat_timer, rest_text_index, rest_text_timer = 0, 0, 0
 tama_speed = 5
 sleeping = False
 sleep_detected = False
+melody_played = False
+show_manual_model = False
 
 # 위치 계산
-egg_w, egg_h = 550, 620
-egg_x = (WIDTH - egg_w) // 2
+egg_w, egg_h = 500, 580
+egg_x = (WIDTH - (egg_w + 250 + 40)) // 2
 egg_y = (HEIGHT - egg_h) // 2
 egg_center_x = egg_x + egg_w // 2
 egg_center_y = egg_y + egg_h // 2
@@ -124,7 +132,10 @@ dodging_bg = pygame.transform.scale(dodging_bg, (320, 350))
 falling_item_img = pygame.image.load("assets/game/falling_item.png").convert_alpha()
 falling_item_img = pygame.transform.scale(falling_item_img, (40, 40))
 obstacle_img = pygame.image.load("assets/game/obstacle.png").convert()
-obstacle_img = pygame.transform.scale(obstacle_img, (80, 80))
+obstacle_img = pygame.transform.scale(obstacle_img, (40, 30))
+status_bg = pygame.image.load("assets/status_background.png").convert_alpha()
+status_bg = pygame.transform.scale(status_bg, (300, 300))  # 상태바 크기에 맞게 조정
+
 shooting_game_played = False
 running_game_played = False
 dodging_game_played = False
@@ -133,6 +144,51 @@ prev_running_over = False
 prev_dodging_over = False
 intro_timer = 0
 selected_game = None
+show_manual_modal = False
+current_manual_page = 0  # 현재 페이지 인덱스
+
+manual_pages = [
+    [  # 0번 페이지 - 전체 요약
+        "💡 상태바 설명 💡",
+        "- 기분: 온도/습도에 따라 변화해요.",
+        "- 배고픔: 음식 먹이면 올라가요.",
+        "- 피로도: 휴식을 통해 회복돼요.",
+        "- 생명력: 피로와 배고픔이 영향을 줘요.",
+        "- 진화: 시간이 지나면 자라나요!"
+    ],
+    [  # 1번 페이지 - 기분 설명
+        " 기분 설명",
+        "- 다마고치는 게임을 좋아해요!",
+        "- 기분은 온도와 습도에 따라 변해요.",
+        "- 10 이하 or 25도 이상이면 감소해요.",
+        "- 습도가 80% 이상이면 기분이 나빠져요.",
+        "- 쾌적한 환경(20~26도, 습도 40~60%) 유지하세요!",
+        
+    ],
+    [  # 2번 페이지 - 배고픔 설명
+        " 배고픔 설명",
+        "- 시간이 지나면 배고픔이 점점 감소해요.",
+        "- 음식 아이템을 먹이면 회복돼요.",
+        "- 자고 일어나면 배가 고파져요."
+    ],
+    [  # 3번 페이지 - 피로도 설명
+        " 피로도 설명",
+        "- 게임을 하면 피로해져요.",
+        "- 휴식 모드를 통해 회복할 수 있어요.",
+        "- 수면은 피로도를 빠르게 회복시켜요."
+    ],
+    [  # 4번 페이지 - 생명력 설명
+        " 생명력 설명",
+        "- 기분, 배고픔, 피로도가 낮으면 감소해요.",
+        "- 상태 관리를 잘해서 생명력을 지켜주세요!"
+    ],
+    [  # 5번 페이지 - 진화 설명
+        " 진화 설명",
+        "- 기분, 배고픔, 피로도 관리가 중요해요.",
+        "- 진화는 총 4단계로 나뉘어요.",
+        "- 진화가 완료되면 새로운 모습이 나타나요!"
+    ]
+]
 
 TOUCH_KEY_MAP = {
     1: "DOWN",     # 키 1
@@ -172,9 +228,17 @@ def load_status(nickname):
         from status.base_status import init_status
         return init_status()
 
+def play_melody():
+    melody = [262, 294, 330, 392, 440, 494, 523]  # 도, 레, 미, 솔, 라, 시, 도
+    buzzer_pwm.start(50)  # 50% Duty cycle
+    for freq in melody:
+        buzzer_pwm.ChangeFrequency(freq)
+        time.sleep(0.2)
+    buzzer_pwm.stop()
+
 # 상태 업데이트 함수
 def update_all_status():
-    #update_mood(status, 20, 40)
+    update_mood(status, 20, 40)
     update_hunger(status)
     check_sleep_restore(status)
     update_health(status)
@@ -204,16 +268,73 @@ def draw_temp_humid_bar(temp, humid):
     screen.blit(rendered, text_rect)
 
 def draw_status_bar(label, value, x, y, color):
-    pygame.draw.rect(screen, GRAY, (x, y, 200, 16))
-    pygame.draw.rect(screen, color, (x, y, 200 * value // 100, 16))
-    screen.blit(font.render(f"{label}: {int(value)}", True, BLACK), (x, y - 22))
+    label_surface = font.render(f"{label}: {int(value)}", True, BLACK)
+    screen.blit(label_surface, (x, y))
+
+    bar_x = x  # 텍스트와 동일한 x 좌표
+    bar_y = y + label_surface.get_height() + 5  # 텍스트 아래 여백 5px
+
+    bar_width = 200
+    bar_height = 16
+
+    pygame.draw.rect(screen, GRAY, (bar_x, bar_y, bar_width, bar_height), border_radius=5)
+    pygame.draw.rect(screen, color, (bar_x, bar_y, bar_width * value // 100, bar_height), border_radius=5)
+    pygame.draw.rect(screen, BLACK, (bar_x, bar_y, bar_width, bar_height), 2, border_radius=5)
+
+def draw_manual_modal():
+    global current_manual_page
+    modal_w, modal_h = 600, 400
+    modal_x = (WIDTH - modal_w) // 2
+    modal_y = (HEIGHT - modal_h) // 2
+
+    # 🎨 색상 정의
+    MODAL_BG = (245, 245, 255)       # 연한 파스텔 배경
+    MODAL_BORDER = (120, 120, 180)   # 테두리 보라
+    TEXT_COLOR = (40, 40, 90)        # 차분한 남색
+
+    # 🌕 모달 박스
+    pygame.draw.rect(screen, MODAL_BG, (modal_x, modal_y, modal_w, modal_h), border_radius=15)
+    pygame.draw.rect(screen, MODAL_BORDER, (modal_x, modal_y, modal_w, modal_h), 3, border_radius=15)
+
+    # 📝 텍스트 출력
+    lines = manual_pages[current_manual_page]
+    for i, line in enumerate(lines):
+        shadow = font.render(line, True, (200, 200, 230))  # 약간 연한 그림자
+        text = font.render(line, True, TEXT_COLOR)
+        screen.blit(shadow, (modal_x + 31, modal_y + 41 + i * 40))
+        screen.blit(text, (modal_x + 30, modal_y + 40 + i * 40))
+
+    # ❌ 닫기 버튼 (동그라미)
+    close_btn = pygame.Rect(modal_x + modal_w - 45, modal_y + 15, 25, 25)
+    pygame.draw.ellipse(screen, (255, 100, 100), close_btn)
+    pygame.draw.ellipse(screen, (180, 0, 0), close_btn, 2)
+    x_text = font.render("X", True, (255, 255, 255))
+    screen.blit(x_text, (close_btn.x + 5, close_btn.y))
+
+    # ◀ ▶ 페이지 넘김 버튼
+    left_btn = pygame.Rect(modal_x + 20, modal_y + modal_h - 50, 30, 30)
+    right_btn = pygame.Rect(modal_x + modal_w - 50, modal_y + modal_h - 50, 30, 30)
+
+    pygame.draw.ellipse(screen, (220, 220, 255), left_btn)
+    pygame.draw.ellipse(screen, (120, 120, 200), left_btn, 2)
+
+    pygame.draw.ellipse(screen, (220, 220, 255), right_btn)
+    pygame.draw.ellipse(screen, (120, 120, 200), right_btn, 2)
+
+    lt = font.render("<", True, (80, 80, 120))
+    rt = font.render(">", True, (80, 80, 120))
+    screen.blit(lt, (left_btn.x + 8, left_btn.y + 3))
+    screen.blit(rt, (right_btn.x + 8, right_btn.y + 3))
+
+    return close_btn, left_btn, right_btn
+
 
 def draw_shell_ui(keys):
     left_buttons = []
-    screen.blit(egg_img, (egg_x, egg_y))    
+    screen.blit(egg_img, (egg_x, egg_y, egg_w, egg_h))    
     screen_w, screen_h = 320, 350
     screen_x = egg_center_x - screen_w // 2
-    screen_y = egg_y + 130
+    screen_y = egg_y + 110
     screen_rect = pygame.Rect(screen_x, screen_y, screen_w, screen_h)
     pygame.draw.rect(screen, WHITE, screen_rect, border_radius=10)
     pygame.draw.rect(screen, BLACK, screen_rect, 2, border_radius=10)
@@ -226,23 +347,54 @@ def draw_shell_ui(keys):
 
     for i in range(3):
         bx = egg_x + 120 + i * 45
-        by = egg_y + egg_h - 105
+        by = egg_y + egg_h - 185
         color = BLACK if button_pressed[i] else GRAY
         pygame.draw.circle(screen, color, (bx, by), 15)
         left_buttons.append(pygame.Rect(bx - 15, by - 15, 30, 30))
 
-    base_x, base_y = egg_center_x + 90, egg_y + egg_h - 100
+    base_x, base_y = egg_center_x + 90, egg_y + egg_h - 80
     for dx, dy, key in [(0, -22, pygame.K_UP), (0, 22, pygame.K_DOWN), (-22, 0, pygame.K_LEFT), (22, 0, pygame.K_RIGHT)]:
         pygame.draw.rect(screen, BLACK if keys[key] else GRAY, (base_x + dx, base_y + dy, 12, 12))
 
-    sx, sy = egg_x + egg_w + 40, egg_y + 100
+    status_bg_x = egg_x + egg_w + 60
+    status_bg_y = egg_y + 110
+    
+    manual_box_w = status_bg.get_width()
+    manual_box_h = 60
+    manual_box_x = status_bg_x
+    manual_box_y = status_bg_y - manual_box_h - 20  # 상태바 위에 여백 20
+
+    manual_box_img = pygame.image.load("assets/manual_box_background.png").convert_alpha()
+    manual_box_img = pygame.transform.scale(manual_box_img, (300, 80))
+    screen.blit(manual_box_img, (manual_box_x, manual_box_y))
+
+    # 책 아이콘 + 텍스트
+    book_img = pygame.image.load("assets/manual.png").convert_alpha()
+    book_img = pygame.transform.scale(book_img, (32, 32))
+    screen.blit(book_img, (manual_box_x + 15, manual_box_y + (manual_box_h - 32) // 2))
+
+    manual_text = font.render("메뉴얼", True, BLACK)
+    screen.blit(manual_text, (manual_box_x + 60, manual_box_y + (manual_box_h - manual_text.get_height()) // 2))
+
+    # 클릭 영역 저장
+    manual_box_rect = pygame.Rect(manual_box_x, manual_box_y, manual_box_w, manual_box_h)
+    screen.blit(status_bg, (status_bg_x, status_bg_y))
+
+    # 상태바 간 간격과 여백 설정
+    bar_spacing = 50
+    top_bottom_margin = 20
+    side_margin = 30
+
+    bar_start_y = status_bg_y + top_bottom_margin
+    bar_x = status_bg_x + side_margin  # 좌측 여백 포함
+
     for i, (label, key, color) in enumerate([
         ("기분", "mood", PINK), ("체력", "fatigue", BLUE), ("배고픔", "hunger", YELLOW),
         ("생명력", "health", RED), ("진화", "evolution", GREEN)
     ]):
-        draw_status_bar(label, status[key], sx, sy + i * 45, color)
+        draw_status_bar(label, status[key], bar_x, bar_start_y + i * bar_spacing, color)
 
-    return screen_rect, left_buttons
+    return screen_rect, left_buttons, manual_box_rect
 
 # 음식 이미지 로드
 def load_food_images():
@@ -356,7 +508,24 @@ while running:
    
     elif event.type == pygame.MOUSEBUTTONDOWN:
         mx, my = pygame.mouse.get_pos()
-       
+        
+        # ① 매뉴얼 모달이 열려 있고 main 상태일 때: 페이지 넘김 또는 닫기
+        if state == "main" and show_manual_modal:
+            close_btn, left_btn, right_btn = draw_manual_modal()
+            if close_btn.collidepoint((mx, my)):
+                show_manual_modal = False
+            elif left_btn.collidepoint((mx, my)) and current_manual_page > 0:
+                current_manual_page -= 1
+            elif right_btn.collidepoint((mx, my)) and current_manual_page < len(manual_pages) - 1:
+                current_manual_page += 1
+                
+        
+       # ② 매뉴얼 처음 열기
+        elif state == "main":
+            if manual_box_rect.collidepoint((mx, my)):
+                show_manual_modal = True
+                
+        
         if exit_button is not None and exit_button.collidepoint((mx, my)):
             if state == "shooting":
                 bullets.clear()
@@ -622,7 +791,13 @@ while running:
         rest_mode = False
 
     update_all_status()
-   
+    
+    if (status["mood"] >= 90 and status["hunger"] >= 90 and status["fatigue"] >= 90 and not melody_played):
+        play_melody()
+        melody_played = True
+    elif status["mood"] < 90 or status["hunger"] < 90 or status["fatigue"] < 90:
+        melody_played = False
+
     if state == "main":
         temp, humid = read_temperature_humidity()
         if temp is not None and humid is not None:
@@ -712,6 +887,9 @@ while running:
 
     pygame.display.flip()
     clock.tick(60)
+
+buzzer_pwm.stop()
+GPIO.cleanup()
 
 save_status(nickname, status)
 pygame.quit()

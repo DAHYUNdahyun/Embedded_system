@@ -364,6 +364,9 @@ def load_food_images():
 
 food_images = load_food_images()
 
+clock = pygame.time.Clock()
+lt = 0
+
 # 메인 루프
 running = True
 while running:
