@@ -53,7 +53,7 @@ buzzer_pwm.start(0)  # 일단 멈춘 상태로 시작
 SAVE_FOLDER = "save_data"
 os.makedirs(SAVE_FOLDER, exist_ok=True)
 
-instruction_pages= 0
+instruction_page_index = 0
 
 # 전역 상수
 WHITE, BLACK, YELLOW, PINK, BLUE, RED, GRAY = (255,255,255), (0,0,0), (255,230,0), (255,100,180), (0,180,255), (255,0,0), (200,200,200)
@@ -486,7 +486,7 @@ while running:
     elif state == "instruction":
         if instruction_timer is None:
             instruction_timer = time.time()
-        if keys and time.time() - instruction_timer >= 3:
+        if keys and time.time() - instruction_timer >= 3000:
             state = "nickname"
             nickname = ""
             vk_row, vk_col = 0, 0
@@ -653,13 +653,16 @@ while running:
         draw_start_screen(screen, font, start_select_idx)
 
     elif state == "instruction":
-        draw_instruction_screen(screen, font, instruction_pages)
+        if not isinstance(instruction_pages, int):
+            print(instruction_pages, type(instruction_pages))
+        
+        draw_instruction_screen(screen, font, instruction_pages, page=instruction_page_index)
 
         if keys:
             if "LEFT" in nk:
-                instruction_pages= max(0, instruction_pages- 1)
+                instruction_page_index = max(0, instruction_page_index- 1)
             elif "RIGHT" in nk:
-                instruction_pages= min(len(instruction_pages) - 1, instruction_pages+ 1)
+                instruction_page_index = min(len(instruction_pages) - 1, instruction_page_index+ 1)
             elif "D" in nk or "C" in nk or "ENTER" in nk:
                 state = "nickname"
                 nickname = ""

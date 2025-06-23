@@ -37,7 +37,7 @@ def draw_start_screen(screen, font_obj, start_select_idx):
 
     draw_text_center(screen, "다마고치 키우기", 233 + offset_y, WHITE if start_select_idx == 0 else BLACK, font_obj=font_obj)
     draw_text_center(screen, "설명", 303 + offset_y, WHITE if start_select_idx == 1 else BLACK, font_obj=font_obj)
-def draw_instruction_screen(screen, font_obj, page=0): 
+def draw_instruction_screen(screen, font_obj, instruction_pages, page=0): 
     screen.fill(WHITE) 
     title_font = pygame.font.SysFont("Arial", 36, bold=True) 
     draw_text_center(screen, "Instruction Manual", 60, (0, 0, 0), title_font)
