@@ -34,20 +34,12 @@
 - 게임 디자인 개선
 
 
-elif state == "instruction":
-    if instruction_timer is None:
-        instruction_timer = time.time()
-    elapsed = time.time() - instruction_timer
+# ✨ 반투명 흰색 박스 생성
+    box_width = 800
+    box_height = 360
+    box_x = (screen_width - box_width) // 2
+    box_y = 100
 
-    draw_instruction_screen(screen, font, instruction_pages, page=instruction_page_index)
-
-    if keys:
-        if "LEFT" in nk:
-            instruction_page_index = max(0, instruction_page_index - 1)
-        elif "RIGHT" in nk:
-            instruction_page_index = min(len(instruction_pages) - 1, instruction_page_index + 1)
-        elif elapsed >= 3 and ("D" in nk or "C" in nk or "ENTER" in nk):
-            state = "nickname"
-            nickname = ""
-            vk_row, vk_col = 0, 0
-            instruction_timer = None
+    box_surface = pygame.Surface((box_width, box_height), pygame.SRCALPHA)  # 알파 채널 포함
+    box_surface.fill((255, 255, 255, 180))  # 흰색, 투명도 180/255
+    screen.blit(box_surface, (box_x, box_y))
