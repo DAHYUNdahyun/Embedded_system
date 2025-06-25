@@ -41,8 +41,8 @@ GPIO.setmode(GPIO.BCM)
 GPIO.setup(TILT_PIN, GPIO.IN, pull_up_down=GPIO.PUD_UP)
 mood_restored = False
 
-LIGHT_PIN = 22
-GPIO.setup(LIGHT_PIN, GPIO.IN)
+# LIGHT_PIN = 22
+# GPIO.setup(LIGHT_PIN, GPIO.IN)
 
 BUZZER_PIN = 18
 GPIO.setmode(GPIO.BCM)
@@ -87,7 +87,7 @@ menu_rects = []
 food, food_radius, eating = None, 10, False
 eat_timer, rest_text_index, rest_text_timer = 0, 0, 0
 tama_speed = 5
-sleeping = False
+# sleeping = False
 sleep_detected = False
 melody_played = False
 show_manual_model = False
@@ -451,7 +451,7 @@ while running:
    
     # 1. 진화 단계 및 감정에 맞는 이미지 선택
     evo = get_evolution_stage(status["evolution"])
-    emo = "zz" if sleeping else ("rest" if rest_mode else "eat" if eating else "sad" if status["mood"] < 50 else "joy")
+    # emo = "zz" if sleeping else ("rest" if rest_mode else "eat" if eating else "sad" if status["mood"] < 50 else "joy")
     image = tama_images[evo][emo]
 
     # 2. 스케일 비율 적용
@@ -889,17 +889,17 @@ while running:
             draw_temp_humid_bar(temp, humid)
             print(f"temp: {temp}C, humid: {humid}%, mood: {status['mood']}")
            
-        light_state = GPIO.input(LIGHT_PIN)
+        # light_state = GPIO.input(LIGHT_PIN)
        
-        if light_state == GPIO.HIGH and not sleeping:
-            print("sleeping")
-            sleeping = True
-            start_sleep(status)
+        # if light_state == GPIO.HIGH and not sleeping:
+        #     print("sleeping")
+        #     sleeping = True
+        #     start_sleep(status)
            
-        elif light_state == GPIO.LOW and sleeping:
-            print("not sleeping")
-            sleeping = False
-            status["last_sleep_time"] = None
+        # elif light_state == GPIO.LOW and sleeping:
+        #     print("not sleeping")
+        #     sleeping = False
+        #     status["last_sleep_time"] = None
        
     if food:
         (fx, fy), _ = food
@@ -937,19 +937,19 @@ while running:
         overlay.fill((100, 100, 100))
         screen.blit(overlay, (screen_rect.left, screen_rect.top))
        
-    if sleeping:
-        width = 300
-        overlay = pygame.Surface((screen_rect.width, screen_rect.height))
-        overlay.set_alpha(50)
-        overlay.fill((50, 50, 50))
-        screen.blit(overlay, (screen_rect.left, screen_rect.top))
+    # if sleeping:
+    #     width = 300
+    #     overlay = pygame.Surface((screen_rect.width, screen_rect.height))
+    #     overlay.set_alpha(50)
+    #     overlay.fill((50, 50, 50))
+    #     screen.blit(overlay, (screen_rect.left, screen_rect.top))
        
-        sleep_text = font.render("Zzz...", True, WHITE)
-        screen.blit(sleep_text, (screen_rect.centerx - sleep_text.get_width() // 2, screen_rect.center[1] -        20))
+    #     sleep_text = font.render("Zzz...", True, WHITE)
+    #     screen.blit(sleep_text, (screen_rect.centerx - sleep_text.get_width() // 2, screen_rect.center[1] -        20))
        
-        restored = check_sleep_restore(status)
-        if restored:
-            sleepnig = False
+    #     restored = check_sleep_restore(status)
+    #     if restored:
+    #         sleepnig = False
    
     if state == "shooting" and shooting_game_over and not prev_shooting_over:
             status["mood"] = min(100, status["mood"] + 10)
