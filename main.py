@@ -456,6 +456,8 @@ def end(screen, font):
 
 # 메인 루프
 running = True
+manual_btns = None 
+
 while running:
     screen.fill(WHITE)
 
@@ -600,15 +602,19 @@ while running:
         mx, my = pygame.mouse.get_pos()
         
         # ① 매뉴얼 모달이 열려 있고 main 상태일 때: 페이지 넘김 또는 닫기
-        if state == "main" and show_manual_modal:
-            close_btn, left_btn, right_btn = draw_manual_modal()
+        if state == "main" and show_manual_modal and manual_btns:
+            close_btn, left_btn, right_btn = manual_btns
             if close_btn.collidepoint((mx, my)):
                 show_manual_modal = False
             elif left_btn.collidepoint((mx, my)) and current_manual_page > 0:
                 current_manual_page -= 1
             elif right_btn.collidepoint((mx, my)) and current_manual_page < len(manual_pages) - 1:
                 current_manual_page += 1
-                
+
+        elif state == "main" and not show_manual_modal:
+            if manual_box_rect.collidepoint((mx, my)):
+                show_manual_modal = True
+                    
         
        # ② 매뉴얼 처음 열기
         elif state == "main":
@@ -993,6 +999,7 @@ while running:
             prev_dodging_over = True
             print("mood +10 fatigue +15")
             
+                    
     if show_manual_modal:
         draw_manual_modal()
 
