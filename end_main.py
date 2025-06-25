@@ -435,9 +435,24 @@ def check_game_over(status):
 
 def end(screen, font):
     screen.fill(WHITE)
-    guide = font.render("Your Tamagotchi is dead!", True, BLACK)
-    screen.blit(guide, (screen.get_width()//2 - guide.get_width()//2, screen.get_height()//2 + 20))
+    
+    lines = [
+        "다마고치가 죽었어요..",
+        "아무 버튼을 통해 재시작을,",
+        "전원 버튼을 통해 종료하세요"
+    ]
+    
+    # 기본 y 위치 설정 (중앙 기준으로 위쪽에서 시작)
+    start_y = screen.get_height() // 2 - (len(lines) * font.get_height() // 2)
+
+    for i, line in enumerate(lines):
+        rendered = font.render(line, True, BLACK)
+        text_x = screen.get_width() // 2 - rendered.get_width() // 2
+        text_y = start_y + i * (font.get_height() + 10)  # 줄 간격 10px
+        screen.blit(rendered, (text_x, text_y))
+
     pygame.display.update()
+
 
 # 메인 루프
 running = True
@@ -471,6 +486,14 @@ while running:
         end(screen, font)
         waiting = True
         while waiting:
+            for event in pygame.event.get():
+                if event.type == pygame.QUIT:
+                    pygame.quit()
+                    sys.exit()
+            
+            keys = parse_keys(read_touch_keys())
+            nk = parse_keys(read_touch_keys() & ~lt)
+            
             if "A" in nk:
                 pygame.quit()
                 sys.exit()
@@ -937,7 +960,7 @@ while running:
         overlay.fill((100, 100, 100))
         screen.blit(overlay, (screen_rect.left, screen_rect.top))
        
-    if sleeping:
+    if state == "main" and sleeping:
         width = 300
         overlay = pygame.Surface((screen_rect.width, screen_rect.height))
         overlay.set_alpha(50)
