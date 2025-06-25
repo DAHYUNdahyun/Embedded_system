@@ -1,3 +1,6 @@
+
+ffmpeg -video_size 1300x700 -framerate 30 -f x11grab -i :0.0+0,0 -codec:v libx264 -preset ultrafast record.mp4
+
 메인 화면
 - 글꼴 설정
 - 음식 생성 범위 조정 및 캐릭터 변화
