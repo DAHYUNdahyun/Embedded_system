@@ -671,13 +671,8 @@ while running:
         # manual 버튼은 main 상태일 때만 처리
         if state == "main":
             if show_manual_modal:
-                manual_btns = draw_manual_modal(current_manual_page)
-                if close_btn.collidepoint((mx, my)):
-                    show_manual_modal = False
-            else:
-                if manual_box_rect.collidepoint((mx, my)):
-                    show_manual_modal = True
-
+                close_btn, left_btn, right_btn = draw_manual_modal(current_manual_page)
+ 
 
     elif keys:
         if state == "main" and "D" in keys:
@@ -1000,7 +995,7 @@ while running:
             
                     
     if show_manual_modal:
-        draw_manual_modal()
+        draw_manual_modal(current_manual_page)
 
     pygame.display.flip()
     clock.tick(60)

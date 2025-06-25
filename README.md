@@ -33,4 +33,7 @@
 - 각 게임에서 나가서 게임 선택 창에서 다시 게임 선택하는 나가기 버튼 추가
 - 게임 디자인 개선
 
-전원 버튼
+raw_str = pygame.image.tostring(screen, 'RGB')
+frame = np.frombuffer(raw_str, dtype=np.uint8).reshape((HEIGHT, WIDTH, 3))
+frame = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
+video_writer.write(frame)
