@@ -295,8 +295,7 @@ def draw_status_bar(label, value, x, y, color):
     pygame.draw.rect(screen, color, (bar_x, bar_y, bar_width * value // 100, bar_height), border_radius=5)
     pygame.draw.rect(screen, BLACK, (bar_x, bar_y, bar_width, bar_height), 2, border_radius=5)
 
-def draw_manual_modal():
-    global current_manual_page
+def draw_manual_modal(page_index):
     modal_w, modal_h = 600, 400
     modal_x = (WIDTH - modal_w) // 2
     modal_y = (HEIGHT - modal_h) // 2
@@ -311,7 +310,7 @@ def draw_manual_modal():
     pygame.draw.rect(screen, MODAL_BORDER, (modal_x, modal_y, modal_w, modal_h), 3, border_radius=15)
 
     # 📝 텍스트 출력
-    lines = manual_pages[current_manual_page]
+    lines = manual_pages[page_index]
     for i, line in enumerate(lines):
         shadow = font.render(line, True, (200, 200, 230))  # 약간 연한 그림자
         text = font.render(line, True, TEXT_COLOR)
@@ -672,7 +671,7 @@ while running:
         # manual 버튼은 main 상태일 때만 처리
         if state == "main":
             if show_manual_modal:
-                close_btn, left_btn, right_btn = draw_manual_modal()
+                manual_btns = draw_manual_modal(current_manual_page)
                 if close_btn.collidepoint((mx, my)):
                     show_manual_modal = False
             else:
