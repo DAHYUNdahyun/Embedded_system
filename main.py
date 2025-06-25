@@ -671,9 +671,14 @@ while running:
         # manual 버튼은 main 상태일 때만 처리
         if state == "main":
             if show_manual_modal:
-                manual_btns = draw_manual_modal(current_manual_page)
+                close_btn, left_btn, right_btn = draw_manual_modal(current_manual_page)
+                
                 if close_btn.collidepoint((mx, my)):
                     show_manual_modal = False
+                elif left_btn.collidepoint((mx, my)) and current_manual_page > 0:
+                    current_manual_page -= 1
+                elif right_btn.collidepoint((mx, my)) and current_manual_page < len(manual_pages) - 1:
+                    current_manual_page += 1
             else:
                 if manual_box_rect.collidepoint((mx, my)):
                     show_manual_modal = True
