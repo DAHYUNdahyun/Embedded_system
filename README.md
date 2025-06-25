@@ -33,4 +33,18 @@
 - 각 게임에서 나가서 게임 선택 창에서 다시 게임 선택하는 나가기 버튼 추가
 - 게임 디자인 개선
 
-전원 버튼
+cmd = [
+    "ffmpeg",
+    "-video_size", "1280x720",
+    "-framerate", "25",
+    "-f", "x11grab",
+    "-i", ":0.0",
+    "-c:v", "libx264",
+    "-preset", "ultrafast",
+    "-pix_fmt", "yuv420p",
+    "output_from_python.mp4"
+]
+
+process = subprocess.Popen(cmd)
+input("Enter 키를 누르면 녹화를 중단합니다...\n")
+process.terminate()
