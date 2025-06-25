@@ -672,17 +672,7 @@ while running:
         if state == "main":
             if show_manual_modal:
                 close_btn, left_btn, right_btn = draw_manual_modal(current_manual_page)
-                
-                if close_btn.collidepoint((mx, my)):
-                    show_manual_modal = False
-                elif left_btn.collidepoint((mx, my)) and current_manual_page > 0:
-                    current_manual_page -= 1
-                elif right_btn.collidepoint((mx, my)) and current_manual_page < len(manual_pages) - 1:
-                    current_manual_page += 1
-            else:
-                if manual_box_rect.collidepoint((mx, my)):
-                    show_manual_modal = True
-
+ 
 
     elif keys:
         if state == "main" and "D" in keys:
@@ -1005,7 +995,7 @@ while running:
             
                     
     if show_manual_modal:
-        draw_manual_modal()
+        draw_manual_modal(current_manual_page)
 
     pygame.display.flip()
     clock.tick(60)
