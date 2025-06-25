@@ -21,7 +21,7 @@ from game.shooting_game import draw_shooting_game
 from game.running_game import draw_running_game
 from game.dodging_game import draw_dodging_game
 from game.draw_heart import load_heart_images
-from start import draw_start_screen, draw_instruction_screen, draw_virtual_keyboard, draw_nickname_screen, draw_hello_screen
+from start import draw_start_screen, draw_instruction_screen, draw_virtual_keyboard, draw_nickname_screen, draw_hello_screen, draw_text_center
 
 # 초기화
 pygame.init()
@@ -102,6 +102,8 @@ tama_x = egg_center_x - tama_width // 2
 tama_y = egg_center_y - tama_height // 2
 egg_img = pygame.image.load("assets/egg.png").convert_alpha()
 egg_img = pygame.transform.scale(egg_img, (egg_w, egg_h))  # 기존 알 크기와 동일하게
+instruction_bg = pygame.image.load("assets/instruction_bg.png").convert_alpha()
+instruction_bg = pygame.transform.scale(instruction_bg, (WIDTH, HEIGHT))
 
 # 시작화면
 font_start = pygame.font.SysFont("Arial", 24, bold=True)
@@ -156,7 +158,7 @@ instruction_pages = [
 [ "[소개]", "이 다마고치는 단순한 가상 펫이 아닙니다.", "라즈베리파이와 다양한 센서를 활용한", "인터랙티브 스마트 반려 생명체입니다.", "환경을 감지하고, 사용자와 소통하며,", "진화하고, 게임도 함께 즐깁니다!", ], 
 [ "[주요 기능]", "<감정 시스템>", "온도/습도에 따라 기분이 변하고,", "음식, 피로, 게임 활동 등으로 상태가 반영됩니다.", "<DHT11 센서로 온습도 감지>", "쾌적한 환경이면 기분이 좋아지고,", "덥거나 습하면 슬퍼져요!" ], 
 [ "[주요 기능]", "<조도 센서 (빛 감지)>", "어두운 환경에서는 잠에 빠지고,", "밝아지면 자동으로 깨어납니다.", "<세 가지 미니게임 내장>", "슈팅 게임 / 러닝 게임 / 회피 게임", "게임으로 피로도를 회복할 수 있어요!" ], 
-[ "[주요 기능]", "<먹이주기 기능>", "직접 먹이를 소환해서 배불리 먹이세요!", "<기울임 반응 (Tilt 센서)>", "다마고치를 심하게 흔들면 어지러워해요...", "부저 멜로디", "모든 상태가 만족스러우면", "기분 좋은 소리를 들려줘요!" ], 
+[ "[주요 기능]", "<먹이주기 기능>", "직접 먹이를 소환해서 배불리 먹이세요!", "<기울임 반응 (Tilt 센서)>", "다마고치를 심하게 흔들면 어지러워해요...", "<부저 멜로디>", "모든 상태가 만족스러우면", "기분 좋은 소리를 들려줘요!" ], 
 [ "[사용 방법]", "전원을 켜면 시작 화면이 나타납니다.", "닉네임을 설정하면 부화해요.", "UI 버튼과 터치센서로 상호작용할 수 있어요.", "왼쪽 버튼: 메인 화면", "가운데 버튼: 게임 선택", "오른쪽 버튼: 휴식 모드 전환", "다양한 자극에 반응하는 다마고치를 관찰해보세요!" ] ]
 
 manual_pages = [
@@ -428,6 +430,14 @@ food_images = load_food_images()
 clock = pygame.time.Clock()
 lt = 0
 
+def check_game_over(status):
+    return status["health"] <= 0
+
+def end(screen, font):
+    screen.fill(WHITE)
+    guide = font.render("Your Tamagotchi is dead!", True, BLACK)
+    screen.blit(guide, (screen.get_width()//2 - guide.get_width()//2, screen.get_height()//2 + 20))
+    pygame.display.update()
 
 # 메인 루프
 running = True
@@ -456,6 +466,40 @@ while running:
     game_width = 80
     game_ratio = game_width / iw
     img_scaled_game = pygame.transform.scale(image, (int(iw * game_ratio), int(ih * game_ratio)))
+    
+    if check_game_over(status):
+        end(screen, font)
+        waiting = True
+        while waiting:
+            for event in pygame.event.get():
+                if event.type == pygame.QUIT:
+                    pygame.quit()
+                    sys.exit()
+            
+            keys = parse_keys(read_touch_keys())
+            nk = parse_keys(read_touch_keys() & ~lt)
+            
+            if "A" in nk:
+                pygame.quit()
+                sys.exit()
+            elif keys:
+                status = {
+                    "mood": 51,
+                    "fatigue": 80,
+                    "hunger": 80,
+                    "health": 80,
+                    "evolution": 40,
+                    "last_sleep_time": None,
+                    "last_rest_time": None,
+                    "last_meal_time": time.time(),
+                    "last_evolution_check": time.time(),
+                    "last_mood_check": time.time(),
+                    "mood_fault_time": None,
+                    "fatigue_fault_time": None,
+                    "hunger_fault_time": None,
+                }
+                waiting = False
+        state = "start"
        
     if state == "main":
         screen_rect, left_buttons, manual_box_rect = draw_shell_ui(keys)
@@ -483,14 +527,25 @@ while running:
             elif "A" in keys:
                 running = False
 
-    elif state == "instruction":
-        if instruction_timer is None:
+    elif state == "instruction": 
+        if instruction_timer is None: 
             instruction_timer = time.time()
-        if keys and time.time() - instruction_timer >= 3000:
-            state = "nickname"
-            nickname = ""
-            vk_row, vk_col = 0, 0
-            instruction_timer = None
+        elapsed = time.time() - instruction_timer
+        
+        screen.blit(instruction_bg, (0, 0))
+
+        draw_instruction_screen(screen, font, instruction_pages, page=instruction_page_index)
+
+        if keys:
+            if "LEFT" in nk:
+                instruction_page_index = max(0, instruction_page_index - 1)
+            elif "RIGHT" in nk:
+                instruction_page_index = min(len(instruction_pages) - 1, instruction_page_index + 1)
+            elif elapsed >= 3 and ("D" in nk or "C" in nk or "ENTER" in nk):
+                state = "nickname"
+                nickname = ""
+                vk_row, vk_col = 0, 0
+                instruction_timer = None
 
     elif state == "nickname":
         if keys:
@@ -652,22 +707,6 @@ while running:
     if state == "start":
         draw_start_screen(screen, font, start_select_idx)
 
-    elif state == "instruction":
-        if not isinstance(instruction_pages, int):
-            print(instruction_pages, type(instruction_pages))
-        
-        draw_instruction_screen(screen, font, instruction_pages, page=instruction_page_index)
-
-        if keys:
-            if "LEFT" in nk:
-                instruction_page_index = max(0, instruction_page_index- 1)
-            elif "RIGHT" in nk:
-                instruction_page_index = min(len(instruction_pages) - 1, instruction_page_index+ 1)
-            elif "D" in nk or "C" in nk or "ENTER" in nk:
-                state = "nickname"
-                nickname = ""
-                vk_row, vk_col = 0, 0
-
     elif state == "nickname":
         draw_nickname_screen(screen, font, nickname, vkeys, vk_row, vk_col)
 
@@ -676,6 +715,9 @@ while running:
 
     elif state == "main":
             screen_rect, left_buttons, manual_box_rect = draw_shell_ui(kys)
+           
+            if "B" in keys:
+                status["health"] -= 10
            
             if not tama_initialized:
                 tama_x = screen_rect.centerx - tama_width // 2
@@ -903,7 +945,8 @@ while running:
         overlay.fill((100, 100, 100))
         screen.blit(overlay, (screen_rect.left, screen_rect.top))
        
-    if sleeping:
+    if state == "main" and sleeping:
+        width = 300
         overlay = pygame.Surface((screen_rect.width, screen_rect.height))
         overlay.set_alpha(50)
         overlay.fill((50, 50, 50))
