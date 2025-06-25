@@ -457,6 +457,10 @@ def end(screen, font):
 running = True
 manual_btns = None 
 
+os.makedirs("frames", exist_ok=True)
+frame_count = 0
+SAVE_FRAMES = True
+
 while running:
     screen.fill(WHITE)
 
@@ -527,6 +531,71 @@ while running:
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
             running = False
+            
+        elif event.type == pygame.MOUSEBUTTONDOWN:
+            mx, my = pygame.mouse.get_pos()
+            
+            # ① 매뉴얼 모달이 열려 있고 main 상태일 때: 페이지 넘김 또는 닫기
+            if state == "main" and show_manual_modal and manual_btns:
+                close_btn, left_btn, right_btn = manual_btns
+                if close_btn.collidepoint((mx, my)):
+                    show_manual_modal = False
+                elif left_btn.collidepoint((mx, my)) and current_manual_page > 0:
+                    current_manual_page -= 1
+                elif right_btn.collidepoint((mx, my)) and current_manual_page < len(manual_pages) - 1:
+                    current_manual_page += 1
+
+            elif state == "main" and not show_manual_modal:
+                if manual_box_rect.collidepoint((mx, my)):
+                    show_manual_modal = True
+                    
+            if exit_button is not None and exit_button.collidepoint((mx, my)):
+                if state == "shooting":
+                    bullets.clear()
+                    enemies.clear()
+                    score = 0
+                    lives = 3
+                    shooting_game_over = False
+                    player_x = egg_center_x
+                    player_y = egg_y + 400
+                elif state == "running":
+                    obstacles.clear()
+                    stars.clear()
+                    running_score = 0
+                    running_lives = 3
+                    running_game_over = False
+                    is_jumping = False
+                    jump_velocity = 0
+                    jump_count = 0
+                elif state == "dodging":
+                    falling_objects.clear()
+                    dodger_score = 0
+                    dodger_lives = 3
+                    dodging_game_over = False
+                    dodger_x = 0
+                    dodger_y = 0
+                   
+                state = "game_select"    
+           
+            for i, rect in enumerate(left_buttons):
+                if rect.collidepoint(mx, my):
+                    button_pressed = [False, False, False]
+                    button_pressed[i] = True
+                    if i == 0:
+                        state = "main"
+                    elif i == 1:
+                        state = "game_select"
+                    elif i == 2:
+                        state = "main"
+                        rest_mode = True
+
+            if state == "game_select":
+                for i, rect in enumerate(menu_rects):
+                    if rect.collidepoint(mx, my):
+                        selected_game = ["shooting", "running", "dodging"][i]
+                        state = selected_game + "_intro"
+                        intro_timer = pygame.time.get_ticks()
+
 
     if state == "start":
         if keys:
@@ -596,82 +665,7 @@ while running:
         if keys:
             status = load_status(nickname)
             state = "main"
-   
-    elif event.type == pygame.MOUSEBUTTONDOWN:
-        mx, my = pygame.mouse.get_pos()
-        
-        # ① 매뉴얼 모달이 열려 있고 main 상태일 때: 페이지 넘김 또는 닫기
-        if state == "main" and show_manual_modal and manual_btns:
-            close_btn, left_btn, right_btn = manual_btns
-            if close_btn.collidepoint((mx, my)):
-                show_manual_modal = False
-            elif left_btn.collidepoint((mx, my)) and current_manual_page > 0:
-                current_manual_page -= 1
-            elif right_btn.collidepoint((mx, my)) and current_manual_page < len(manual_pages) - 1:
-                current_manual_page += 1
-
-        elif state == "main" and not show_manual_modal:
-            if manual_box_rect.collidepoint((mx, my)):
-                show_manual_modal = True
-                    
-        
-       # ② 매뉴얼 처음 열기
-        elif state == "main":
-            if manual_box_rect.collidepoint((mx, my)):
-                show_manual_modal = True
                 
-        
-        if exit_button is not None and exit_button.collidepoint((mx, my)):
-            if state == "shooting":
-                bullets.clear()
-                enemies.clear()
-                score = 0
-                lives = 3
-                shooting_game_over = False
-                player_x = egg_center_x
-                player_y = egg_y + 400
-            elif state == "running":
-                obstacles.clear()
-                stars.clear()
-                running_score = 0
-                running_lives = 3
-                running_game_over = False
-                is_jumping = False
-                jump_velocity = 0
-                jump_count = 0
-            elif state == "dodging":
-                falling_objects.clear()
-                dodger_score = 0
-                dodger_lives = 3
-                dodging_game_over = False
-                dodger_x = 0
-                dodger_y = 0
-               
-            state = "game_select"    
-       
-        for i, rect in enumerate(left_buttons):
-            if rect.collidepoint(mx, my):
-                button_pressed = [False, False, False]
-                button_pressed[i] = True
-                if i == 0:
-                    state = "main"
-                elif i == 1:
-                    state = "game_select"
-                elif i == 2:
-                    state = "main"
-                    rest_mode = True
-
-        if state == "game_select":
-            for i, rect in enumerate(menu_rects):
-                if rect.collidepoint(mx, my):
-                    selected_game = ["shooting", "running", "dodging"][i]
-                    state = selected_game + "_intro"
-                    intro_timer = pygame.time.get_ticks()
-                    
-        # manual 버튼은 main 상태일 때만 처리
-        if state == "main":
-            if show_manual_modal:
-                close_btn, left_btn, right_btn = draw_manual_modal(current_manual_page)
  
 
     elif keys:
@@ -995,7 +989,11 @@ while running:
             
                     
     if show_manual_modal:
-        draw_manual_modal(current_manual_page)
+        manual_btns = draw_manual_modal(current_manual_page)
+        
+    if SAVE_FRAMES:
+        pygame.image.save(screen, f"frames/frame_{frame_count:04d}.png")
+        frame_count += 1    
 
     pygame.display.flip()
     clock.tick(60)
